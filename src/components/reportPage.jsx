@@ -129,17 +129,17 @@ const ReportPage = () => {
             headRemark: data?.headRemark, classTeacherRemark: data?.classTeacherRemark,
             
             subjects: [
-                { name: "QUR'AN", CA1: acad.QURAN?.[0]?.CA1, CA2: acad.QURAN?.[0]?.CA2, Ass: acad.QURAN?.[0]?.Ass, Exam: acad.QURAN?.[0]?.Exam, Position: acad.QURAN?.[0]?.Position || "N/A" },
-                { name: "TAJWEED", CA1: acad.TAJWEED?.[0]?.CA1, CA2: acad.TAJWEED?.[0]?.CA2, Ass: acad.TAJWEED?.[0]?.Ass, Exam: acad.TAJWEED?.[0]?.Exam, Position: acad.TAJWEED?.[0]?.Position || "N/A" },
-                { name: "TAUHEED", CA1: acad.TAUHEED?.[0]?.CA1, CA2: acad.TAUHEED?.[0]?.CA2, Ass: acad.TAUHEED?.[0]?.Ass, Exam: acad.TAUHEED?.[0]?.Exam, Position: acad.TAUHEED?.[0]?.Position || "N/A" },
-                { name: "FIQH", CA1: acad.FIQH?.[0]?.CA1, CA2: acad.FIQH?.[0]?.CA2, Ass: acad.FIQH?.[0]?.Ass, Exam: acad.FIQH?.[0]?.Exam, Position: acad.FIQH?.[0]?.Position || "N/A" },
-                { name: "HADITH", CA1: acad.HADITH?.[0]?.CA1, CA2: acad.HADITH?.[0]?.CA2, Ass: acad.HADITH?.[0]?.Ass, Exam: acad.HADITH?.[0]?.Exam, Position: acad.HADITH?.[0]?.Position || "N/A" },
-                { name: "ARABIC", CA1: acad.ARABIC?.[0]?.CA1, CA2: acad.ARABIC?.[0]?.CA2, Ass: acad.ARABIC?.[0]?.Ass, Exam: acad.ARABIC?.[0]?.Exam, Position: acad.ARABIC?.[0]?.Position || "N/A" },
-                { name: "AZKHAR", CA1: acad.AZKHAR?.[0]?.CA1, CA2: acad.AZKHAR?.[0]?.CA2, Ass: acad.AZKHAR?.[0]?.Ass, Exam: acad.AZKHAR?.[0]?.Exam, Position: acad.AZKHAR?.[0]?.Position || "N/A" },
-                { name: "SIRAH", CA1: acad.SIRAH?.[0]?.CA1, CA2: acad.SIRAH?.[0]?.CA2, Ass: acad.SIRAH?.[0]?.Ass, Exam: acad.SIRAH?.[0]?.Exam, Position: acad.SIRAH?.[0]?.Position || "N/A" },
-                { name: "HURUF", CA1: acad.HURUF?.[0]?.CA1, CA2: acad.HURUF?.[0]?.CA2, Ass: acad.HURUF?.[0]?.Ass, Exam: acad.HURUF?.[0]?.Exam, Position: acad.HURUF?.[0]?.Position || "N/A" },
+                { name: "QUR'AN", CA1: acad?.QURAN?.[0]?.CA1, CA2: acad?.QURAN?.[0]?.CA2, Ass: acad?.QURAN?.[0]?.Ass, Exam: acad?.QURAN?.[0]?.Exam, Position: acad?.QURAN?.[0]?.Position || "N/A" },
+                { name: "TAJWEED", CA1: acad?.TAJWEED?.[0]?.CA1, CA2: acad?.TAJWEED?.[0]?.CA2, Ass: acad?.TAJWEED?.[0]?.Ass, Exam: acad?.TAJWEED?.[0]?.Exam, Position: acad?.TAJWEED?.[0]?.Position || "N/A" },
+                { name: "TAUHEED", CA1: acad?.TAUHEED?.[0]?.CA1, CA2: acad?.TAUHEED?.[0]?.CA2, Ass: acad?.TAUHEED?.[0]?.Ass, Exam: acad?.TAUHEED?.[0]?.Exam, Position: acad?.TAUHEED?.[0]?.Position || "N/A" },
+                { name: "FIQH", CA1: acad?.FIQH?.[0]?.CA1, CA2: acad?.FIQH?.[0]?.CA2, Ass: acad?.FIQH?.[0]?.Ass, Exam: acad?.FIQH?.[0]?.Exam, Position: acad?.FIQH?.[0]?.Position || "N/A" },
+                { name: "HADITH", CA1: acad?.HADITH?.[0]?.CA1, CA2: acad?.HADITH?.[0]?.CA2, Ass: acad?.HADITH?.[0]?.Ass, Exam: acad?.HADITH?.[0]?.Exam, Position: acad?.HADITH?.[0]?.Position || "N/A" },
+                { name: "ARABIC", CA1: acad?.ARABIC?.[0]?.CA1, CA2: acad?.ARABIC?.[0]?.CA2, Ass: acad?.ARABIC?.[0]?.Ass, Exam: acad?.ARABIC?.[0]?.Exam, Position: acad?.ARABIC?.[0]?.Position || "N/A" },
+                { name: "AZKHAR", CA1: acad?.AZKHAR?.[0]?.CA1, CA2: acad?.AZKHAR?.[0]?.CA2, Ass: acad?.AZKHAR?.[0]?.Ass, Exam: acad?.AZKHAR?.[0]?.Exam, Position: acad?.AZKHAR?.[0]?.Position || "N/A" },
+                { name: "SIRAH", CA1: acad?.SIRAH?.[0]?.CA1, CA2: acad?.SIRAH?.[0]?.CA2, Ass: acad?.SIRAH?.[0]?.Ass, Exam: acad?.SIRAH?.[0]?.Exam, Position: acad?.SIRAH?.[0]?.Position || "N/A" },
+                { name: "HURUF", CA1: acad?.HURUF?.[0]?.CA1, CA2: acad?.HURUF?.[0]?.CA2, Ass: acad?.HURUF?.[0]?.Ass, Exam: acad?.HURUF?.[0]?.Exam, Position: acad?.HURUF?.[0]?.Position || "N/A" },
             ],
-            behavior: acad.behavior || {
+            behavior: acad?.behavior || {
                 moralEthics: acad?.moralEthics, punctuality: acad?.punctuality, handWriting: acad?.handWriting,
                 honesty: acad?.honesty, fluency: acad?.fluency, selfControl:acad?.selfControl,
                 responsibility: acad?.responsibility, initiative:acad?.initiative, politeness: acad?.politeness
