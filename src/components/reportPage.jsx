@@ -95,6 +95,7 @@ const ReportPage = () => {
                 }
                 
                 setValue(response.data); 
+                console.log(value)
                 
             } catch (err) {
                 console.error("Fetch error:", err);
