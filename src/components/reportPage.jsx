@@ -119,7 +119,7 @@ const ReportPage = () => {
 
         const terms = data?.term;
         const sessions= data?.session;
-        const acad = data.academicYear?.[0]?.[`${sessions}`]?.[`${terms}`];
+        const acad = data.academicYears?.[0]?.[`${sessions}`]?.[`${terms}`];
         
         return {
             school: data?.school, studentName: data?.studentName, class: data?.class,studentPhoto:data?.studentPhoto,
