@@ -96,14 +96,8 @@ const StudentSignIn = () => {
             // 4. VERIFY SUCCESS: Navigate and show indicator
             setSuccess(true);
             // Optional: A brief delay for the user to see the success message before redirecting
-            setTimeout(() => {
-                if(res.data.payment === 'paid'){
-                nav(`/option/${res.data._id}`);
-                 }else{
-                    
-                    alert("You have not pay your examination fees\n Kindly pay your examination fees to view your result")
-                 nav(`/pay`)}
-            }, 500); // 500ms delay
+           nav(`/option/${res.data._id}`);
+                
 
         } catch (err) {
             // 5. VERIFY ERROR: This happens if the token is invalid or API fails after login
