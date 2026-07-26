@@ -39,21 +39,34 @@ const calculateSubjectData = (subject) => {
 };
 
 // Calculates overall totals, average, and overall grade/remark
+
 const calculateOverallData = (subjects) => {
     const initialTotals = {
         CA1_Total: 0, CA2_Total: 0, Ass_Total: 0, Exam_Total: 0, Overall_Total: 0,
     };
 
+
+      let idx =[]
+      
+    const findLenght = (subject)=>{
+        if (subject !== 0){
+            idx.push(subject)
+        } else return;
+    }
+
+
     const sums = subjects.reduce((acc, subject) => {
+        findLenght(subject.Total);
         acc.CA1_Total += subject.CA1;
         acc.CA2_Total += subject.CA2;
         acc.Ass_Total += subject.Ass;
         acc.Exam_Total += subject.Exam;
+
         acc.Overall_Total += subject.Total; 
         return acc;
     }, initialTotals);
 
-    const subjectCount = subjects.length;
+    const subjectCount = idx.length;
     const avgScore = subjectCount > 0 
         ? (sums.Overall_Total / subjectCount).toFixed(2)
         : 0;
