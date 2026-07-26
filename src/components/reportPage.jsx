@@ -190,7 +190,7 @@ const ReportPage = () => {
         if (window.html2pdf) {
             const element = document.querySelector('.report-container');
             var opt = {
-                margin: 0.5,
+                margin: 0.2,
                 filename: 'Sambo_Result_Report.pdf',
                 image: { type: 'jpeg', quality: 0.98 },
                 html2canvas: { scale: 5, media: 'print' },
@@ -409,10 +409,10 @@ const ReportPage = () => {
                 <div className="school-header">
                     
                     <div className="school-info">
-                            <img src='/aiifheader.png'   style={{margin:'auto'}} height={150} width={700} />    
+                            <img src='/aiifheader.png'   style={{margin:'auto'}} height={1300} width={690} />    
                           <h3 className="report-title">STATEMENT OF RESULT</h3>
                     </div>
-                    <img src={studentPhoto} alt="Student" width={150}height={120} style={{ border:"1px solid #ddd",borderRadius:"5px",padding:"5px"}} />
+                    <img src={studentPhoto} alt="Student" width={140}height={100} style={{ border:"1px solid #ddd",borderRadius:"5px",padding:"5px"}} />
                 </div>
                 
                 {/* Student Info Table - AGE column removed and TERM value field width increased */}
