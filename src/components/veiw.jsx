@@ -60,8 +60,15 @@ const WeeklyReportView = () => {
 
         // 1. SET DEFAULT YEAR (From student session, or first academic year entry, or current calendar year)
         const currentYearBlock = res.data?.academicYears?.[0] || {};
-        const availableYears = Object.keys(currentYearBlock).filter((key) => key !== '_id');
+        // Replace this line:
+          // const availableYears = Object.keys(currentYearBlock).filter((key) => key !== '_id');
 
+          // With this strict numeric filter:
+          const availableYears = Object.keys(currentYearBlock).filter((key) => 
+            key !== '_id' && /^\d+$/.test(key) // Ensures only keys that are strictly digits (e.g. "2025", "2026") are treated as years
+          );
+
+        
         const defaultYear =
           res.data?.session ||
           (availableYears.length > 0 ? availableYears[availableYears.length - 1] : new Date().getFullYear().toString());
