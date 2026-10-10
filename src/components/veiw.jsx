@@ -12,8 +12,8 @@ const WeeklyReportView = () => {
   const { id } = useParams();
 
   // --- SELECTOR STATES ---
-  const [selectedYear, setSelectedYear] = useState('2026');
-  const [selectedTerm, setSelectedTerm] = useState('thirdTerm');
+  const [selectedYear, setSelectedYear] = useState('');
+  const [selectedTerm, setSelectedTerm] = useState('');
 
   // --- FORM STATES ---
   const [teacherData, setTeacherData] = useState(
@@ -49,7 +49,7 @@ const WeeklyReportView = () => {
   const [parentData, setParentData] = useState({ name: '', comment: '', date: '' });
   const [status, setStatus] = useState({ teacher: 'idle', mgmt: 'idle', parent: 'idle' });
 
-  // --- FETCH DATA ---
+  // --- FETCH DATA & SET DEFAULTS ---
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -58,9 +58,20 @@ const WeeklyReportView = () => {
         
         setResponse(res.data);
 
-        // Pre-select student defaults if present
-        if (res.data?.session) setSelectedYear(res.data.session);
-        if (res.data?.term) setSelectedTerm(res.data.term);
+        // 1. SET DEFAULT YEAR (From student session, or first academic year entry, or current calendar year)
+        const currentYearBlock = res.data?.academicYears?.[0] || {};
+        const availableYears = Object.keys(currentYearBlock).filter((key) => key !== '_id');
+
+        const defaultYear =
+          res.data?.session ||
+          (availableYears.length > 0 ? availableYears[availableYears.length - 1] : new Date().getFullYear().toString());
+
+        setSelectedYear(defaultYear);
+
+        // 2. SET DEFAULT TERM (From student document term or fallback to "thirdTerm")
+        const defaultTerm = res.data?.term || 'thirdTerm';
+        setSelectedTerm(defaultTerm);
+
       } catch (err) {
         console.error('Fetch error:', err);
       }
@@ -69,12 +80,13 @@ const WeeklyReportView = () => {
   }, [id]);
 
   // --- SAFELY EXTRACT YEAR AND TERM DATA ---
-  // Targets academicYears[0][selectedYear][selectedTerm]
   const currentYearBlock = response?.academicYears?.[0] || {};
-  const currentTermData = currentYearBlock?.[selectedYear]?.[selectedTerm] || {};
-
-  // Extract available year keys (e.g. ["2025", "2026"])
   const availableYears = Object.keys(currentYearBlock).filter((key) => key !== '_id');
+
+  const activeYear = selectedYear || response?.session || availableYears[0] || '2026';
+  const activeTerm = selectedTerm || response?.term || 'firstTerm';
+
+  const currentTermData = currentYearBlock?.[activeYear]?.[activeTerm] || {};
 
   // Helper to extract value safely whether stored as Array or Object/Map
   const getItemValue = (container, index, field) => {
@@ -259,7 +271,7 @@ const WeeklyReportView = () => {
         <div className="flex items-center gap-2 font-bold">
           <label>Academic Year:</label>
           <select 
-            value={selectedYear} 
+            value={activeYear} 
             onChange={(e) => {
               setSelectedYear(e.target.value);
               setIncrease(0);
@@ -279,7 +291,7 @@ const WeeklyReportView = () => {
         <div className="flex items-center gap-2 font-bold">
           <label>Academic Term:</label>
           <select 
-            value={selectedTerm} 
+            value={activeTerm} 
             onChange={(e) => {
               setSelectedTerm(e.target.value);
               setIncrease(0);
@@ -296,7 +308,7 @@ const WeeklyReportView = () => {
       {/* --- TEACHER SECTION --- */}
       <section className="mb-10 border-b-2 border-gray-300 pb-8">
         <h1 className="text-2xl font-bold text-center text-blue-900 mb-4 tracking-tighter">
-          TEACHER'S WEEKLY REPORT ({selectedYear} - {selectedTerm.toUpperCase()})
+          TEACHER'S WEEKLY REPORT ({activeYear} - {activeTerm.toUpperCase()})
         </h1>
 
         <div className="flex justify-between mb-4 font-bold text-[12px]">
@@ -548,4 +560,4 @@ const WeeklyReportView = () => {
   );
 };
 
-export default WeeklyReportView;
+export default WeeklyReportView;s
