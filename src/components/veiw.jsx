@@ -84,7 +84,7 @@ const WeeklyReportView = () => {
   const availableYears = Object.keys(currentYearBlock).filter((key) => key !== '_id');
 
   const activeYear = selectedYear || response?.session || availableYears[0] || '2026';
-  const activeTerm = selectedTerm || response?.term || 'firstTerm';
+  const activeTerm = selectedTerm || response?.term || 'thirdTerm';
 
   const currentTermData = currentYearBlock?.[activeYear]?.[activeTerm] || {};
 
@@ -560,4 +560,4 @@ const WeeklyReportView = () => {
   );
 };
 
-export default WeeklyReportView;s
+export default WeeklyReportView;
