@@ -5,37 +5,24 @@ import { useParams } from 'react-router-dom';
 
 const WeeklyReportView = () => {
   const days = ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-  const lower = days.map((items) => items.slice(0, 3).toLowerCase());
+  const lower = days.map((items)=> items.slice(0,3).toLocaleLowerCase())
 
-  const [response, setResponse] = useState(null);
-  const [increase, setIncrease] = useState(0);
-  const { id } = useParams();
+  const [day, setDay] = useState('')
+  const [response, setResponse] = useState([''])
+  
+  // 1. FIXED: useParams is a hook and must be called with ()
+  const { id } = useParams(); 
 
   // --- STATES ---
   const [teacherData, setTeacherData] = useState(
-    lower.map((day) => ({
-      day,
-      date: '',
-      remark: '',
-      total: '',
-      tajweed: '',
-      hifz: '',
-      tajError: '',
-      hifzError: '',
-      toV: '',
-      fromV: '',
-      chapter: ''
+    lower.map(day => ({ 
+      day, date: '', remark: '', total: '', tajweed: '', 
+      hifz: '', tajError: '', hifzError: '', toV: '', fromV: '', chapter: '' 
     }))
   );
-
-  const [teacherComments, setTeacherComments] = useState({
-    week: '',
-    term: '',
-    comment: '',
-    name: '',
-    signature: ''
-  });
-
+  
+  const [teacherComments, setTeacherComments] = useState({ week: '', term: '', comment: '', name: '', signature: '' });
+  
   const [mgmtData, setMgmtData] = useState({
     newHifz: { starting: '', stopping: '', score: '', grade: '', remark: '' },
     prevHifz: { starting: '', stopping: '', score: '', grade: '', remark: '' },
@@ -45,155 +32,198 @@ const WeeklyReportView = () => {
   const [parentData, setParentData] = useState({ name: '', comment: '', date: '' });
   const [status, setStatus] = useState({ teacher: 'idle', mgmt: 'idle', parent: 'idle' });
 
-  // --- FETCH DATA ---
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const res = await axios.get(`https://portal-database-seven.vercel.app/student/${id}`);
-        if (!res.data) {
-          throw new Error('No data received from API.');
-        }
-        setResponse(res.data);
-      } catch (err) {
-        console.error('Fetch error:', err);
-      }
-    };
-    if (id) fetchData();
-  }, [id]);
-
-  // --- SAFE ACADEMIC TERM EXTRACTOR ---
-  const activeYear = response?.session || '2026';
-  const activeTerm = response?.term || 'firstTerm';
-
-  const currentYearRecord =
-    response?.academicYears?.find((y) => y.year === activeYear) ||
-    response?.academicYears?.[0] ||
-    {};
-
-  const currentTermData = currentYearRecord?.[activeTerm] || {};
-
-  // --- HELPER FUNCTIONS ---
-  const getGradeAndRemark = (score) => {
-    const numScore = parseFloat(score);
-    if (numScore >= 75) return { Grade: 'A', Remark: 'EXCELLENT' };
-    if (numScore >= 70) return { Grade: 'B', Remark: 'VERY GOOD' };
-    if (numScore >= 60) return { Grade: 'C', Remark: 'GOOD' };
-    if (numScore >= 50) return { Grade: 'D', Remark: 'PASS' };
-    if (numScore >= 1) return { Grade: 'F', Remark: 'FAIL' };
-    return { Grade: '--', Remark: '--' };
-  };
-
-  const totalScore = (hifz, hifzError, tajweed, tajError) => {
-    const cal = (parseInt(hifz) || 0) + (parseInt(tajweed) || 0);
-    const calErr = (parseInt(hifzError) || 0) + (parseInt(tajError) || 0);
-
-    if (hifz || hifzError || tajError || tajweed) {
-      return { total: cal - calErr };
-    }
-    return { total: '--' };
-  };
-
-  // --- PAGINATION LOGIC ---
-  const maxRecords = currentTermData?.sat?.length || 0;
-
-  const move = () => {
-    if (maxRecords <= 1) return;
-    if (increase >= maxRecords - 1) {
-      setIncrease(0);
+const getGradeAndRemark = (score) => {
+    if (score >= 75) {
+        return { Grade: "A", Remark: "EXCELLENT" };
+    } else if (score >= 70) {
+        return { Grade: "B", Remark: "VERY GOOD" };
+    } else if (score >= 60) {
+        return { Grade: "C", Remark: "GOOD" };
+    } else if (score >= 50) {
+        return { Grade: "D", Remark: "PASS" };
+    } else if(score >= 1) {
+        return { Grade: "F", Remark: "FAIL" };
     } else {
-      setIncrease((prev) => prev + 1);
+        return {Grade:"--",Remark:"--"}
     }
-  };
+};
 
-  const back = () => {
-    if (maxRecords <= 1) return;
-    if (increase === 0) {
-      setIncrease(maxRecords - 1);
-    } else {
-      setIncrease((prev) => prev - 1);
-    }
-  };
 
-  // --- DATA SOURCE CREATORS ---
-  const managementFunc = () => {
-    const newScoreVal = currentTermData?.newScore?.[increase]?.newScore || '';
-    const preScoreVal = currentTermData?.preScore?.[increase]?.preScore || '';
-
-    const nScore = getGradeAndRemark(newScoreVal);
-    const pScore = getGradeAndRemark(preScoreVal);
-
-    return {
-      newHifz: {
-        starting: currentTermData?.newStarting?.[increase]?.newStarting || '',
-        stopping: currentTermData?.newStopping?.[increase]?.newStopping || '',
-        score: newScoreVal,
-        grade: nScore.Grade,
-        remark: nScore.Remark
-      },
-      prevHifz: {
-        starting: currentTermData?.prevStarting?.[increase]?.prevStarting || '',
-        stopping: currentTermData?.preStopping?.[increase]?.preStopping || '',
-        score: preScoreVal,
-        grade: pScore.Grade,
-        remark: pScore.Remark
-      }
-    };
-  };
-
-  const createDataSource = (daily, field) => {
-    const dayArray = currentTermData?.[daily] || [];
-    const dayRecord = dayArray[increase] || {};
-
-    const { total } = totalScore(
-      dayRecord.hifz,
-      dayRecord.hifzError,
-      dayRecord.tajweed,
-      dayRecord.tajError
-    );
-    const { Remark } = getGradeAndRemark(total);
-
-    const values = {
-      date: dayRecord.date || '',
-      remark: Remark,
-      total: total,
-      tajweed: dayRecord.tajweed || '',
-      hifz: dayRecord.hifz || '',
-      tajError: dayRecord.tajError || '',
-      hifzError: dayRecord.hifzError || '',
-      toV: dayRecord.toV || '',
-      fromV: dayRecord.fromV || '',
-      chapter: dayRecord.chapter || ''
-    };
-
-    return values[field] || '';
-  };
-
-  // --- SUBMIT HANDLER ---
-  const submitToBackend = async (section) => {
-    setStatus((prev) => ({ ...prev, [section]: 'loading' }));
-
+  useEffect(async()=>{
+    
     try {
-      const res = await axios.put(
-        `https://portal-database-seven.vercel.app/student/push/${id}/day`,
-        {
+                const res = await axios.get(`https://portal-database-seven.vercel.app/student/${id}`)
+                
+                if (!res.data) {
+                    throw new Error("No data received from API.");
+                }
+                
+                setResponse(res.data); 
+                console.log(res.data)
+                
+            } catch (err) {
+                console.error("Fetch error:", err);
+                }
+  },[id])
+  const [increase,setIncrease] =  useState(0)
+
+  const move = () =>{
+    const init = 0
+    const last = response?.sat?.length
+    if(increase === init){
+      setIncrease(prev => prev + 1)
+      console.log(increase)
+
+    }  else if(increase === last){
+      setIncrease(init)
+      console.log(increase)
+    
+  } else{
+      setIncrease(prev => prev + 1)
+       console.log(increase)
+  }
+}
+  const back = ()=>{
+    const init = 0
+    const last = response?.sat?.length
+    
+    if(increase === init){
+      setIncrease(()=> last)
+      console.log(increase)
+    }  else{
+      setIncrease(prev => prev - 1)
+      console.log(increase)
+
+    }
+  }
+const managementFunc =()=>{
+  const nScore = getGradeAndRemark(response?.newScore?.[increase]?.newScore)
+  const pScore = getGradeAndRemark(response?.preScore?.[increase]?.preScore)
+
+  return {
+newHifz: { starting:response?.newStarting?.[increase]?.newStarting,
+          stopping:response?.newStopping?.[increase]?.newStopping,
+          score:response?.newScore?.[increase]?.newScore,
+          grade:nScore.Grade,
+          remark:nScore.Remark, 
+},
+prevHifz: { starting:response?.prevStarting?.[increase]?.prevStarting,
+            stopping:response?.preStopping?.[increase]?.preStopping,
+            score:response?. preScore?.[increase]?. preScore,
+            grade:pScore.Grade,
+            remark:pScore.Remark,
+          },
+
+  }
+}
+
+const totalScore =  (hifz,hifzError,tajweed,tajError) =>{
+     const cal = parseInt(hifz) + parseInt(tajweed)
+     const calErr = parseInt(hifzError) + parseInt(tajError)
+     
+      if(hifz || hifzError || tajError || tajweed ){ return{
+        total: cal - calErr,
+       }} else{
+                return{
+                  total:"--"
+                }
+       }
+
+    }
+
+const createDataSource = (daily,k) => {
+
+  const {total } = totalScore(
+     response?.[daily]?.[increase]?.hifz,
+     response?.[daily]?.[increase]?.hifzError,
+     response?.[daily]?.[increase]?.tajweed,
+     response?.[daily]?.[increase]?.tajError,
+  )
+       const {Remark} = getGradeAndRemark(total)  
+                                                                            
+        return {
+              date: response?.[daily]?.[increase]?.[k],
+              remark:Remark,
+              total:total,
+              tajweed: response?.[daily]?.[increase]?.[k], 
+              hifz: response?.[daily]?.[increase]?.[k],
+              tajError: response?.[daily]?.[increase]?.[k], 
+              hifzError: response?.[daily]?.[increase]?.[k],
+              toV: response?.[daily]?.[increase]?.[k],
+              fromV: response?.[daily]?.[increase]?.[k],
+              chapter: response?.[daily]?.[increase]?.[k]
+        }  
+           
+    };
+    
+    
+
+  console.log(createDataSource())
+
+  // --- POST HANDLER ---a
+  const submitToBackend = async (section) => {
+    setStatus(prev => ({ ...prev, [section]: 'loading' }));
+    
+    try {
+      // 2. FIXED: Accessing teacherData as an array and combining with single state objects
+      const payload = {
+        // We send the entire array of daily records
+         ...teacherData, 
+        // Metadata from teacherComments
+        week: teacherComments.week,
+        term: teacherComments.term,
+        teacherComment: teacherComments.comment,
+        teacherName: teacherComments.name,
+        teacherSign: teacherComments.signature,
+        // Management data
+        management: mgmtData,
+        // Parent data
+        parent: parentData
+      };
+
+      const response = await axios.put(
+        `https://portal-database-seven.vercel.app/student/push/${id}/day`, 
+       {
+          // date:teacherData[increase]?.date,
+          // tajweed:teacherData[increase]?.tajweed,
+          // hifz:teacherData[increase]?.hifz,
+          // tajError:teacherData[increase]?.tajError,
+          // hifzError:teacherData[increase]?.hifzError,
+          // toV:teacherData[increase]?.toV,
+          // fromV:teacherData[increase]?.fromV,
+          // chapter:teacherData[increase]?.chapter,
+          // weeks:teacherData[increase]?.week,
+          // terms:teacherData[increase]?.term, 
+          // teacherComment:teacherComments.comment,
+          // teacherName:teacherComments.name, 
+          // teacherSign:teacherComments.signature , 
+          // newStarting: mgmtData.newHifz.starting,
+          // newStopping: mgmtData.newHifz.stopping,
+          // newScore: mgmtData.newHifz.score,
+          // hodComment: mgmtData.hodComment,
+          // prevStarting: mgmtData.prevHifz.starting,
+          // preStopping: mgmtData.prevHifz.stopping, 
+          // preScore: mgmtData.prevHifz.score,
+      
           parentName: parentData.name,
           parentComment: parentData.comment,
           parentDate: parentData.date
         }
       );
-
-      if (res.status === 200 || res.status === 204) {
-        setStatus((prev) => ({ ...prev, [section]: 'success' }));
-        setTimeout(() => setStatus((prev) => ({ ...prev, [section]: 'idle' })), 3000);
+      
+      // 3. FIXED: Axios uses response.status (Fetch uses response.ok)
+      if (response.status === 200 || response.status === 204) {
+        setStatus(prev => ({ ...prev, [section]: 'success' }));
+        setTimeout(() => setStatus(prev => ({ ...prev, [section]: 'idle' })), 3000);
       }
     } catch (error) {
-      console.error('Submission error:', error);
-      setStatus((prev) => ({ ...prev, [section]: 'error' }));
-      setTimeout(() => setStatus((prev) => ({ ...prev, [section]: 'idle' })), 5000);
+      console.error("Submission error:", error);
+      setStatus(prev => ({ ...prev, [section]: 'error' }));
+      setTimeout(() => setStatus(prev => ({ ...prev, [section]: 'idle' })), 5000);
     }
   };
 
-  // --- UI COMPONENTS ---
+  // --- UI COMPONENTS ---z
   const StatusMessage = ({ type }) => {
     if (type === 'idle') return null;
     const config = {
@@ -226,325 +256,119 @@ const WeeklyReportView = () => {
     );
   };
 
-  const inputClass =
-    'w-full h-full bg-transparent text-center focus:bg-blue-50 outline-none transition-all';
-  const underlineInput =
-    'border-b border-dotted border-black px-2 focus:bg-blue-50 outline-none';
+  const inputClass = "w-full h-full bg-transparent text-center focus:bg-blue-50 outline-none transition-all";
+  const underlineInput = "border-b border-dotted border-black px-2 focus:bg-blue-50 outline-none";
 
   return (
     <div className="max-w-5xl mx-auto p-8 bg-white text-[11px] leading-tight text-black font-sans">
+      
       {/* --- TEACHER SECTION --- */}
       <section className="mb-10 border-b-2 border-gray-300 pb-8">
-        <h1 className="text-2xl font-bold text-center text-blue-900 mb-4 tracking-tighter">
-          TEACHER'S WEEKLY REPORT
-        </h1>
-
-        <div className="flex justify-between mb-4 font-bold text-[12px]">
-          <div>
-            Week{' '}
-            <input
-              className={underlineInput}
-              value={teacherComments.week || currentTermData?.weeks || ''}
-              onChange={(e) => setTeacherComments({ ...teacherComments, week: e.target.value })}
-            />{' '}
-            الأسبوع
-          </div>
-          <div
-            style={{ paddingRight: '50px' }}
-            className="cursor-pointer hover:text-blue-600"
-            onClick={back}
-          >
-            <FaArrowAltCircleLeft size={18} />
-          </div>
-          <div
-            style={{ paddingRight: '50px' }}
-            className="cursor-pointer hover:text-blue-600"
-            onClick={move}
-          >
-            <FaArrowAltCircleRight size={18} />
-          </div>
-          <div>
-            Term{' '}
-            <input
-              className={underlineInput}
-              value={teacherComments.term || currentTermData?.terms || ''}
-              onChange={(e) => setTeacherComments({ ...teacherComments, term: e.target.value })}
-            />{' '}
-            الفترة
-          </div>
-        </div>
+        <h1 className="text-2xl font-bold text-center text-blue-900 mb-4 tracking-tighter">TEACHER'S WEEKLY REPORT</h1>
+        
+         <div className="flex justify-between mb-4 font-bold text-[12px]">
+                  <div>Week <input className={underlineInput}value={!teacherComments.week ? response?.weeks?.[increase]?.weeks: teacherComments.week} onChange={e => setTeacherComments({...teacherComments, week: e.target.value})} /> الأسبوع</div>
+                  <div style={{ paddingRight:"50px"}} onClick={()=>back()}><FaArrowAltCircleLeft/> </div>
+                  <div style={{ paddingRight:"50px"}} onClick={()=>move()}><FaArrowAltCircleRight /></div>
+                  <div>Term <input className={underlineInput} value={!teacherComments.term ? response?.terms?.[increase]?.terms: teacherComments.term} onChange={e => setTeacherComments({...teacherComments, term: e.target.value})} /> الفترة</div>
+                </div>
+        
 
         <table className="w-full border-collapse border border-black mb-4">
           <thead className="bg-gray-100 uppercase text-[9px]">
             <tr className="h-12">
-              <th className="border border-black p-1">
-                التاريخ
-                <br />
-                Date
-              </th>
-              <th className="border border-black p-1">
-                التقدير
-                <br />
-                Remark
-              </th>
-              <th className="border border-black p-1 w-12">
-                مجموع
-                <br />
-                Total (100)
-              </th>
-              <th className="border border-black p-1">
-                درجة التجويد
-                <br />
-                Tajweed (30)
-              </th>
-              <th className="border border-black p-1">
-                درجة الحفظ
-                <br />
-                Hifz (70)
-              </th>
-              <th className="border border-black p-1">
-                أخطاء تجويدية
-                <br />
-                Tajweed Rule
-              </th>
-              <th className="border border-black p-1">
-                أخطاء حفظية
-                <br />
-                Hifz Point
-              </th>
-              <th className="border border-black p-1">
-                إلى آية
-                <br />
-                To Verse
-              </th>
-              <th className="border border-black p-1">
-                من آية
-                <br />
-                From Verse
-              </th>
-              <th className="border border-black p-1">
-                سورة
-                <br />
-                Chapters
-              </th>
-              <th className="border border-black p-1 bg-gray-200 uppercase">
-                Days
-                <br />
-                الأيام
-              </th>
+              <th className="border border-black p-1">التاريخ<br/>Date</th>
+              <th className="border border-black p-1">التقدير<br/>Remark</th>
+              <th className="border border-black p-1 w-12">مجموع<br/>Total (100)</th>
+              <th className="border border-black p-1">درجة التجويد<br/>Tajweed (30)</th>
+              <th className="border border-black p-1">درجة الحفظ<br/>Hifz (70)</th>
+              <th className="border border-black p-1">أخطاء تجويدية<br/>Tajweed Rule</th>
+              <th className="border border-black p-1">أخطاء حفظية<br/>Hifz Point</th>
+              <th className="border border-black p-1">إلى آية<br/>To Verse</th>
+              <th className="border border-black p-1">من آية<br/>From Verse</th>
+              <th className="border border-black p-1">سورة<br/>Chapters</th>
+              <th className="border border-black p-1 bg-gray-200 uppercase">Days<br/>الأيام</th>
             </tr>
           </thead>
           <tbody>
             {teacherData.map((row, idx) => (
               <tr key={idx} className="h-8">
-                {[
-                  'date',
-                  'remark',
-                  'total',
-                  'tajweed',
-                  'hifz',
-                  'tajError',
-                  'hifzError',
-                  'toV',
-                  'fromV',
-                  'chapter'
-                ].map((field) => (
+                {['date', 'remark', 'total', 'tajweed', 'hifz', 'tajError', 'hifzError', 'toV', 'fromV', 'chapter'].map((field) => (
                   <td key={field} className="border border-black">
-                    <input
-                      type={field === 'date' ? 'date' : 'text'}
-                      className={inputClass}
-                      value={createDataSource(row.day, field)}
+                    <input 
+                      type={field === "date" ? "date" : "text"} 
+                      className={inputClass} 
+                      value={createDataSource(row.day,field)[field] } 
                       onChange={(e) => {
                         const updated = [...teacherData];
                         updated[idx][field] = e.target.value;
                         setTeacherData(updated);
-                      }}
+                      }} 
                       readOnly
                     />
                   </td>
                 ))}
-                <td className="border border-black bg-gray-50 font-bold text-center">
-                  {row.day.toUpperCase()}
-                </td>
+                <td  className={ "border border-black bg-gray-50 font-bold text-center"}>{row.day.toLocaleUpperCase()
+                  }</td>
               </tr>
             ))}
           </tbody>
         </table>
 
         <div className="grid grid-cols-2 gap-y-4 mb-4">
-          <div className="col-span-2">
-            Teacher's Comments:{' '}
-            <input
-              className="w-3/4 border-b border-black outline-none"
-              value={teacherComments.comment || currentTermData?.teacherComment || ''}
-              onChange={(e) =>
-                setTeacherComments({ ...teacherComments, comment: e.target.value })
-              }
-            />{' '}
-            ملاحظات المعلم
-          </div>
-          <div>
-            Signature:{' '}
-            <input
-              className={underlineInput}
-              value={teacherComments.signature || currentTermData?.teacherSign || ''}
-              onChange={(e) =>
-                setTeacherComments({ ...teacherComments, signature: e.target.value })
-              }
-            />{' '}
-            التوقيع
-          </div>
-          <div className="text-right">
-            Teacher's Name:{' '}
-            <input
-              className={underlineInput}
-              value={teacherComments.name || currentTermData?.teacherName || ''}
-              onChange={(e) => setTeacherComments({ ...teacherComments, name: e.target.value })}
-            />{' '}
-            اسم المعلم
-          </div>
+          <div className="col-span-2">Teacher's Comments: <input className="w-3/4 border-b border-black outline-none" value={teacherComments ? response?.teacherComment?.[increase]?.teacherComment : teacherComments.comment} onChange={e => setTeacherComments({...teacherComments, comment: e.target.value})} /> ملاحظات المعلم</div>
+          <div>Signature: <input className={underlineInput} value={teacherComments ? response?.teacherSign?.[increase]?.teacherSign : teacherComments.signature} onChange={e => setTeacherComments({...teacherComments, signature: e.target.value})} /> التوقيع</div>
+          <div className="text-right">Teacher's Name: <input className={underlineInput} value={teacherComments ? response?.teacherName?.[increase]?.teacherName: teacherComments.name} onChange={e => setTeacherComments({...teacherComments, name: e.target.value})} /> اسم المعلم</div>
         </div>
+        
       </section>
 
       {/* --- MANAGEMENT SECTION --- */}
       <section className="mb-10 border-b-2 border-gray-300 pb-8">
-        <h2 className="text-xl font-bold text-center text-blue-900 mb-4 uppercase">
-          Management Weekly Report
-        </h2>
+        <h2 className="text-xl font-bold text-center text-blue-900 mb-4 uppercase">Management Weekly Report</h2>
         <table className="w-full border-collapse border border-black text-center mb-4">
           <thead className="bg-gray-100 h-10 uppercase text-[9px]">
             <tr>
-              <th className="border border-black p-1">
-                التطبيق
-                <br />
-                Remark
-              </th>
-              <th className="border border-black p-1">
-                الدرجة
-                <br />
-                Grade
-              </th>
-              <th className="border border-black p-1">
-                النتيجة
-                <br />
-                Score
-              </th>
-              <th className="border border-black p-1">
-                الإنتهاء
-                <br />
-                Stopping
-              </th>
-              <th className="border border-black p-1">
-                الإبتداء
-                <br />
-                Starting
-              </th>
-              <th className="border border-black p-1 bg-gray-200 w-40 font-bold">
-                الموضوع
-                <br />
-                Topic
-              </th>
+              <th className="border border-black p-1">التطبيق<br/>Remark</th>
+              <th className="border border-black p-1">الدرجة<br/>Grade</th>
+              <th className="border border-black p-1">النتيجة<br/>Score</th>
+              <th className="border border-black p-1">الإنتهاء<br/>Stopping</th>
+              <th className="border border-black p-1">الإبتداء<br/>Starting</th>
+              <th className="border border-black p-1 bg-gray-200 w-40 font-bold">الموضوع<br/>Topic</th>
             </tr>
           </thead>
           <tbody>
-            {[
-              { l: 'الحفظ الجديد New Hifz', k: 'newHifz' },
-              { l: 'الحفظ السابق Prev Hifz', k: 'prevHifz' }
-            ].map((topic) => (
+            {[{l:'الحفظ الجديد New Hifz', k:'newHifz'}, {l:'الحفظ السابق Prev Hifz', k:'prevHifz'}].map((topic) => (
               <tr key={topic.k} className="h-12">
-                {['remark', 'grade', 'score', 'stopping', 'starting'].map((field) => (
+                {['remark', 'grade', 'score', 'stopping', 'starting'].map(field => (
                   <td key={field} className="border border-black">
-                    <input
-                      className={inputClass}
-                      readOnly
-                      value={
-                        mgmtData[topic.k][field] || managementFunc()[topic.k][field] || ''
-                      }
-                      onChange={(e) =>
-                        setMgmtData({
-                          ...mgmtData,
-                          [topic.k]: { ...mgmtData[topic.k], [field]: e.target.value }
-                        })
-                      }
-                    />
+                    <input className={inputClass} readOnly value={ mgmtData[topic.k][field] ?  mgmtData[topic.k][field]: managementFunc()[topic.k][field]} onChange={e => setMgmtData({...mgmtData, [topic.k]: {...mgmtData[topic.k], [field]: e.target.value}})} />
                   </td>
                 ))}
-                <td className="border border-black font-bold bg-gray-50 text-[10px]">
-                  {topic.l}
-                </td>
+                <td className="border border-black font-bold bg-gray-50 text-[10px]">{topic.l}</td>
               </tr>
             ))}
           </tbody>
         </table>
-
+        
         <div className="mb-4 font-bold">
-          Qur'an HOD's Comment:{' '}
-          <input
-            className="w-3/4 border-b border-black outline-none font-normal"
-            value={
-              mgmtData.hodComment ||
-              currentTermData?.hodComment?.[increase]?.hodComment ||
-              ''
-            }
-            onChange={(e) => setMgmtData({ ...mgmtData, hodComment: e.target.value })}
-          />{' '}
-          ملاحظات رئيس القسم
+          Qur'an HOD's Comment: <input className="w-3/4 border-b border-black outline-none font-normal" value={!mgmtData.hodComment ? response?.hodComment?.[increase]?.hodComment:  mgmtData.hodComment} onChange={e => setMgmtData({...mgmtData, hodComment: e.target.value})} /> ملاحظات رئيس القسم
         </div>
+        
       </section>
 
       {/* --- PARENT SECTION --- */}
       <section className="mb-6">
-        <h2 className="text-xl font-bold text-center text-blue-900 mb-4 uppercase">
-          Parent/Guardian's Weekly Report
-        </h2>
+        <h2 className="text-xl font-bold text-center text-blue-900 mb-4 uppercase">Parent/Guardian's Weekly Report</h2>
         <p className="mb-4 leading-relaxed text-[12px] italic text-gray-800">
-          I,{' '}
-          <input
-            className={underlineInput}
-            value={
-              parentData.name ||
-              currentTermData?.parentName?.[increase]?.parentName ||
-              ''
-            }
-            onChange={(e) => setParentData({ ...parentData, name: e.target.value })}
-          />{' '}
-          the Parent/Guardian of the above named pupil/ward hereby certified that, I listened,
-          observed and supervised my child's/ward's progress for this week in comparison with
-          the school report and Allah is my witness.
+          I, <input className={underlineInput} value={!parentData.name ? response?.parentName?.[increase]?.parentName : parentData.name} onChange={e => setParentData({...parentData, name: e.target.value})} /> the Parent/Guardian of the above named pupil/ward hereby certified that, I listened, observed and supervised my child's/ward's progress for this week in comparison with the school report and Allah is my witness.
         </p>
         <div className="space-y-4 mb-4">
-          <div className="font-bold">
-            Parent/Guardian's Comment:{' '}
-            <input
-              className="w-2/3 border-b border-black outline-none font-normal"
-              value={
-                parentData.comment ||
-                currentTermData?.parentComment?.[increase]?.parentComment ||
-                ''
-              }
-              onChange={(e) => setParentData({ ...parentData, comment: e.target.value })}
-            />
-          </div>
-          <div className="font-bold">
-            Sign/Date:{' '}
-            <input
-              className={underlineInput}
-              type="date"
-              value={
-                parentData.date ||
-                currentTermData?.parentDate?.[increase]?.parentDate ||
-                ''
-              }
-              onChange={(e) => setParentData({ ...parentData, date: e.target.value })}
-            />
-          </div>
+          <div className="font-bold">Parent/Guardian's Comment: <input className="w-2/3 border-b border-black outline-none font-normal" value={!parentData.comment? response?.parentComment?.[increase]?.parentComment : parentData.comment} onChange={e => setParentData({...parentData, comment: e.target.value})} /></div>
+          <div className="font-bold">Sign/Date: <input className={underlineInput} type="date" value={!parentData.date? response?.parentDate?.[increase]?.parentDate : parentData.date} onChange={e => setParentData({...parentData, date: e.target.value})} /></div>
         </div>
 
-        <SubmitButton
-          section="parent"
-          label="Submit Parent Report"
-          onClick={() => submitToBackend('parent')}
-        />
+        <SubmitButton section="parent" label="Submit Parent Report" onClick={() => submitToBackend('parent', 'parent-report', parentData)} />
       </section>
 
       {/* --- GRADING KEY --- */}
