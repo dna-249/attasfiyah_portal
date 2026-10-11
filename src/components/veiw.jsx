@@ -11,11 +11,7 @@ const WeeklyReportView = () => {
   const [increase, setIncrease] = useState(0);
   const { id } = useParams();
 
-  // --- SELECTOR STATES ---
-  const [selectedYear, setSelectedYear] = useState('');
-  const [selectedTerm, setSelectedTerm] = useState('');
-
-  // --- FORM STATES ---
+  // --- STATES ---
   const [teacherData, setTeacherData] = useState(
     lower.map((day) => ({
       day,
@@ -49,29 +45,15 @@ const WeeklyReportView = () => {
   const [parentData, setParentData] = useState({ name: '', comment: '', date: '' });
   const [status, setStatus] = useState({ teacher: 'idle', mgmt: 'idle', parent: 'idle' });
 
-  // --- FETCH DATA & SET DEFAULTS ---
+  // --- FETCH DATA ---
   useEffect(() => {
     const fetchData = async () => {
       try {
         const res = await axios.get(`https://portal-database-seven.vercel.app/student/${id}`);
-        if (!res.data) throw new Error('No data received from API.');
-        
+        if (!res.data) {
+          throw new Error('No data received from API.');
+        }
         setResponse(res.data);
-
-        const currentYearBlock = res.data?.academicYears?.[0] || {};
-        const availableYears = Object.keys(currentYearBlock).filter((key) => 
-          key !== '_id' && /^\d+$/.test(key)
-        );
-
-        const defaultYear =
-          res.data?.session ||
-          (availableYears.length > 0 ? availableYears[availableYears.length - 1] : new Date().getFullYear().toString());
-
-        setSelectedYear(defaultYear);
-
-        const defaultTerm = res.data?.term || 'thirdTerm';
-        setSelectedTerm(defaultTerm);
-
       } catch (err) {
         console.error('Fetch error:', err);
       }
@@ -79,26 +61,18 @@ const WeeklyReportView = () => {
     if (id) fetchData();
   }, [id]);
 
-  const currentYearBlock = response?.academicYears?.[0] || {};
-  const availableYears = Object.keys(currentYearBlock).filter((key) => key !== '_id' && /^\d+$/.test(key));
+  // --- SAFE ACADEMIC TERM EXTRACTOR ---
+  const activeYear = response?.session || '2026';
+  const activeTerm = response?.term || 'firstTerm';
 
-  const activeYear = selectedYear || response?.session || availableYears[0] || '2026';
-  const activeTerm = selectedTerm || response?.term || 'thirdTerm';
+  const currentYearRecord =
+    response?.academicYears?.find((y) => y.year === activeYear) ||
+    response?.academicYears?.[0] ||
+    {};
 
-  const currentTermData = currentYearBlock?.[activeYear]?.[activeTerm] || {};
+  const currentTermData = currentYearRecord?.[activeTerm] || {};
 
-  const getItemValue = (container, index, field) => {
-    if (!container) return '';
-    if (Array.isArray(container)) {
-      const item = container[index];
-      return typeof item === 'object' ? item?.[field] || '' : item || '';
-    }
-    if (typeof container === 'object') {
-      return container?.[index]?.[field] || container?.[index] || '';
-    }
-    return '';
-  };
-
+  // --- HELPER FUNCTIONS ---
   const getGradeAndRemark = (score) => {
     const numScore = parseFloat(score);
     if (numScore >= 75) return { Grade: 'A', Remark: 'EXCELLENT' };
@@ -119,15 +93,11 @@ const WeeklyReportView = () => {
     return { total: '--' };
   };
 
-  const maxRecords = Math.max(
-    currentTermData?.sat?.length || 0,
-    currentTermData?.sun?.length || 0,
-    currentTermData?.mon?.length || 0,
-    currentTermData?.teacherComment?.length || 0,
-    1
-  );
+  // --- PAGINATION LOGIC ---
+  const maxRecords = currentTermData?.sat?.length || 0;
 
   const move = () => {
+    if (maxRecords <= 1) return;
     if (increase >= maxRecords - 1) {
       setIncrease(0);
     } else {
@@ -136,11 +106,38 @@ const WeeklyReportView = () => {
   };
 
   const back = () => {
+    if (maxRecords <= 1) return;
     if (increase === 0) {
       setIncrease(maxRecords - 1);
     } else {
       setIncrease((prev) => prev - 1);
     }
+  };
+
+  // --- DATA SOURCE CREATORS ---
+  const managementFunc = () => {
+    const newScoreVal = currentTermData?.newScore?.[increase]?.newScore || '';
+    const preScoreVal = currentTermData?.preScore?.[increase]?.preScore || '';
+
+    const nScore = getGradeAndRemark(newScoreVal);
+    const pScore = getGradeAndRemark(preScoreVal);
+
+    return {
+      newHifz: {
+        starting: currentTermData?.newStarting?.[increase]?.newStarting || '',
+        stopping: currentTermData?.newStopping?.[increase]?.newStopping || '',
+        score: newScoreVal,
+        grade: nScore.Grade,
+        remark: nScore.Remark
+      },
+      prevHifz: {
+        starting: currentTermData?.prevStarting?.[increase]?.prevStarting || '',
+        stopping: currentTermData?.preStopping?.[increase]?.preStopping || '',
+        score: preScoreVal,
+        grade: pScore.Grade,
+        remark: pScore.Remark
+      }
+    };
   };
 
   const createDataSource = (daily, field) => {
@@ -171,62 +168,18 @@ const WeeklyReportView = () => {
     return values[field] || '';
   };
 
-  const managementFunc = () => {
-    const newScoreVal = mgmtData.newHifz.score || getItemValue(currentTermData?.newScore, increase, 'newScore');
-    const preScoreVal = mgmtData.prevHifz.score || getItemValue(currentTermData?.preScore, increase, 'preScore');
-
-    const nScore = getGradeAndRemark(newScoreVal);
-    const pScore = getGradeAndRemark(preScoreVal);
-
-    return {
-      newHifz: {
-        starting: mgmtData.newHifz.starting || getItemValue(currentTermData?.newStarting, increase, 'newStarting'),
-        stopping: mgmtData.newHifz.stopping || getItemValue(currentTermData?.newStopping, increase, 'newStopping'),
-        score: newScoreVal,
-        grade: nScore.Grade,
-        remark: nScore.Remark
-      },
-      prevHifz: {
-        starting: mgmtData.prevHifz.starting || getItemValue(currentTermData?.prevStarting, increase, 'prevStarting'),
-        stopping: mgmtData.prevHifz.stopping || getItemValue(currentTermData?.preStopping, increase, 'preStopping'),
-        score: preScoreVal,
-        grade: pScore.Grade,
-        remark: pScore.Remark
-      }
-    };
-  };
-
-  // --- FIXED SUBMIT HANDLER ---
+  // --- SUBMIT HANDLER ---
   const submitToBackend = async (section) => {
     setStatus((prev) => ({ ...prev, [section]: 'loading' }));
 
     try {
-      let payload = { year: activeYear, term: activeTerm };
-
-      if (section === 'mgmt') {
-        const currentMgmt = managementFunc();
-        payload = {
-          ...payload,
-          newStarting: currentMgmt.newHifz.starting,
-          newStopping: currentMgmt.newHifz.stopping,
-          newScore: currentMgmt.newHifz.score,
-          prevStarting: currentMgmt.prevHifz.starting,
-          preStopping: currentMgmt.prevHifz.stopping,
-          preScore: currentMgmt.prevHifz.score,
-          hodComment: mgmtData.hodComment || getItemValue(currentTermData?.hodComment, increase, 'hodComment')
-        };
-      } else if (section === 'parent') {
-        payload = {
-          ...payload,
-          parentName: parentData.name || getItemValue(currentTermData?.parentName, increase, 'parentName'),
-          parentComment: parentData.comment || getItemValue(currentTermData?.parentComment, increase, 'parentComment'),
-          parentDate: parentData.date || getItemValue(currentTermData?.parentDate, increase, 'parentDate')
-        };
-      }
-
       const res = await axios.put(
         `https://portal-database-seven.vercel.app/student/push/${id}/day`,
-        payload
+        {
+          parentName: parentData.name,
+          parentComment: parentData.comment,
+          parentDate: parentData.date
+        }
       );
 
       if (res.status === 200 || res.status === 204) {
@@ -240,6 +193,7 @@ const WeeklyReportView = () => {
     }
   };
 
+  // --- UI COMPONENTS ---
   const StatusMessage = ({ type }) => {
     if (type === 'idle') return null;
     const config = {
@@ -272,55 +226,17 @@ const WeeklyReportView = () => {
     );
   };
 
-  const inputClass = "w-full h-full bg-transparent text-center focus:bg-blue-50 outline-none transition-all";
-  const underlineInput = "border-b border-dotted border-black px-2 focus:bg-blue-50 outline-none";
+  const inputClass =
+    'w-full h-full bg-transparent text-center focus:bg-blue-50 outline-none transition-all';
+  const underlineInput =
+    'border-b border-dotted border-black px-2 focus:bg-blue-50 outline-none';
 
   return (
     <div className="max-w-5xl mx-auto p-8 bg-white text-[11px] leading-tight text-black font-sans">
-      
-      {/* --- YEAR & TERM SELECTOR BAR --- */}
-      <div className="flex justify-between items-center bg-gray-100 p-4 rounded mb-6 border border-gray-300 print:hidden">
-        <div className="flex items-center gap-2 font-bold">
-          <label>Academic Year:</label>
-          <select 
-            value={activeYear} 
-            onChange={(e) => {
-              setSelectedYear(e.target.value);
-              setIncrease(0);
-            }}
-            className="border border-gray-400 px-2 py-1 rounded bg-white outline-none cursor-pointer"
-          >
-            {availableYears.length > 0 ? (
-              availableYears.map((yr) => (
-                <option key={yr} value={yr}>{yr}</option>
-              ))
-            ) : (
-              <option value="2026">2026</option>
-            )}
-          </select>
-        </div>
-
-        <div className="flex items-center gap-2 font-bold">
-          <label>Academic Term:</label>
-          <select 
-            value={activeTerm} 
-            onChange={(e) => {
-              setSelectedTerm(e.target.value);
-              setIncrease(0);
-            }}
-            className="border border-gray-400 px-2 py-1 rounded bg-white outline-none cursor-pointer"
-          >
-            <option value="firstTerm">First Term</option>
-            <option value="secondTerm">Second Term</option>
-            <option value="thirdTerm">Third Term</option>
-          </select>
-        </div>
-      </div>
-
       {/* --- TEACHER SECTION --- */}
       <section className="mb-10 border-b-2 border-gray-300 pb-8">
         <h1 className="text-2xl font-bold text-center text-blue-900 mb-4 tracking-tighter">
-          TEACHER'S WEEKLY REPORT ({activeYear} - {activeTerm.toUpperCase()})
+          TEACHER'S WEEKLY REPORT
         </h1>
 
         <div className="flex justify-between mb-4 font-bold text-[12px]">
@@ -328,22 +244,30 @@ const WeeklyReportView = () => {
             Week{' '}
             <input
               className={underlineInput}
-              value={teacherComments.week || getItemValue(currentTermData?.weeks, increase, 'weeks')}
+              value={teacherComments.week || currentTermData?.weeks || ''}
               onChange={(e) => setTeacherComments({ ...teacherComments, week: e.target.value })}
             />{' '}
             الأسبوع
           </div>
-          <div className="cursor-pointer hover:text-blue-600 pr-12" onClick={back}>
+          <div
+            style={{ paddingRight: '50px' }}
+            className="cursor-pointer hover:text-blue-600"
+            onClick={back}
+          >
             <FaArrowAltCircleLeft size={18} />
           </div>
-          <div className="cursor-pointer hover:text-blue-600 pr-12" onClick={move}>
+          <div
+            style={{ paddingRight: '50px' }}
+            className="cursor-pointer hover:text-blue-600"
+            onClick={move}
+          >
             <FaArrowAltCircleRight size={18} />
           </div>
           <div>
             Term{' '}
             <input
               className={underlineInput}
-              value={teacherComments.term || getItemValue(currentTermData?.terms, increase, 'terms')}
+              value={teacherComments.term || currentTermData?.terms || ''}
               onChange={(e) => setTeacherComments({ ...teacherComments, term: e.target.value })}
             />{' '}
             الفترة
@@ -353,17 +277,61 @@ const WeeklyReportView = () => {
         <table className="w-full border-collapse border border-black mb-4">
           <thead className="bg-gray-100 uppercase text-[9px]">
             <tr className="h-12">
-              <th className="border border-black p-1">التاريخ<br />Date</th>
-              <th className="border border-black p-1">التقدير<br />Remark</th>
-              <th className="border border-black p-1 w-12">مجموع<br />Total (100)</th>
-              <th className="border border-black p-1">درجة التجويد<br />Tajweed (30)</th>
-              <th className="border border-black p-1">درجة الحفظ<br />Hifz (70)</th>
-              <th className="border border-black p-1">أخطاء تجويدية<br />Tajweed Rule</th>
-              <th className="border border-black p-1">أخطاء حفظية<br />Hifz Point</th>
-              <th className="border border-black p-1">إلى آية<br />To Verse</th>
-              <th className="border border-black p-1">من آية<br />From Verse</th>
-              <th className="border border-black p-1">سورة<br />Chapters</th>
-              <th className="border border-black p-1 bg-gray-200 uppercase">Days<br />الأيام</th>
+              <th className="border border-black p-1">
+                التاريخ
+                <br />
+                Date
+              </th>
+              <th className="border border-black p-1">
+                التقدير
+                <br />
+                Remark
+              </th>
+              <th className="border border-black p-1 w-12">
+                مجموع
+                <br />
+                Total (100)
+              </th>
+              <th className="border border-black p-1">
+                درجة التجويد
+                <br />
+                Tajweed (30)
+              </th>
+              <th className="border border-black p-1">
+                درجة الحفظ
+                <br />
+                Hifz (70)
+              </th>
+              <th className="border border-black p-1">
+                أخطاء تجويدية
+                <br />
+                Tajweed Rule
+              </th>
+              <th className="border border-black p-1">
+                أخطاء حفظية
+                <br />
+                Hifz Point
+              </th>
+              <th className="border border-black p-1">
+                إلى آية
+                <br />
+                To Verse
+              </th>
+              <th className="border border-black p-1">
+                من آية
+                <br />
+                From Verse
+              </th>
+              <th className="border border-black p-1">
+                سورة
+                <br />
+                Chapters
+              </th>
+              <th className="border border-black p-1 bg-gray-200 uppercase">
+                Days
+                <br />
+                الأيام
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -408,10 +376,7 @@ const WeeklyReportView = () => {
             Teacher's Comments:{' '}
             <input
               className="w-3/4 border-b border-black outline-none"
-              value={
-                teacherComments.comment ||
-                getItemValue(currentTermData?.teacherComment, increase, 'teacherComment')
-              }
+              value={teacherComments.comment || currentTermData?.teacherComment || ''}
               onChange={(e) =>
                 setTeacherComments({ ...teacherComments, comment: e.target.value })
               }
@@ -422,10 +387,7 @@ const WeeklyReportView = () => {
             Signature:{' '}
             <input
               className={underlineInput}
-              value={
-                teacherComments.signature ||
-                getItemValue(currentTermData?.teacherSign, increase, 'teacherSign')
-              }
+              value={teacherComments.signature || currentTermData?.teacherSign || ''}
               onChange={(e) =>
                 setTeacherComments({ ...teacherComments, signature: e.target.value })
               }
@@ -436,10 +398,7 @@ const WeeklyReportView = () => {
             Teacher's Name:{' '}
             <input
               className={underlineInput}
-              value={
-                teacherComments.name ||
-                getItemValue(currentTermData?.teacherName, increase, 'teacherName')
-              }
+              value={teacherComments.name || currentTermData?.teacherName || ''}
               onChange={(e) => setTeacherComments({ ...teacherComments, name: e.target.value })}
             />{' '}
             اسم المعلم
@@ -455,12 +414,36 @@ const WeeklyReportView = () => {
         <table className="w-full border-collapse border border-black text-center mb-4">
           <thead className="bg-gray-100 h-10 uppercase text-[9px]">
             <tr>
-              <th className="border border-black p-1">التطبيق<br />Remark</th>
-              <th className="border border-black p-1">الدرجة<br />Grade</th>
-              <th className="border border-black p-1">النتيجة<br />Score</th>
-              <th className="border border-black p-1">الإنتهاء<br />Stopping</th>
-              <th className="border border-black p-1">الإبتداء<br />Starting</th>
-              <th className="border border-black p-1 bg-gray-200 w-40 font-bold">الموضوع<br />Topic</th>
+              <th className="border border-black p-1">
+                التطبيق
+                <br />
+                Remark
+              </th>
+              <th className="border border-black p-1">
+                الدرجة
+                <br />
+                Grade
+              </th>
+              <th className="border border-black p-1">
+                النتيجة
+                <br />
+                Score
+              </th>
+              <th className="border border-black p-1">
+                الإنتهاء
+                <br />
+                Stopping
+              </th>
+              <th className="border border-black p-1">
+                الإبتداء
+                <br />
+                Starting
+              </th>
+              <th className="border border-black p-1 bg-gray-200 w-40 font-bold">
+                الموضوع
+                <br />
+                Topic
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -473,7 +456,10 @@ const WeeklyReportView = () => {
                   <td key={field} className="border border-black">
                     <input
                       className={inputClass}
-                      value={mgmtData[topic.k][field] || managementFunc()[topic.k][field] || ''}
+                      readOnly
+                      value={
+                        mgmtData[topic.k][field] || managementFunc()[topic.k][field] || ''
+                      }
                       onChange={(e) =>
                         setMgmtData({
                           ...mgmtData,
@@ -497,19 +483,13 @@ const WeeklyReportView = () => {
             className="w-3/4 border-b border-black outline-none font-normal"
             value={
               mgmtData.hodComment ||
-              getItemValue(currentTermData?.hodComment, increase, 'hodComment')
+              currentTermData?.hodComment?.[increase]?.hodComment ||
+              ''
             }
             onChange={(e) => setMgmtData({ ...mgmtData, hodComment: e.target.value })}
           />{' '}
           ملاحظات رئيس القسم
         </div>
-
-        {/* Added missing submit button for management */}
-        <SubmitButton
-          section="mgmt"
-          label="Submit Management Report"
-          onClick={() => submitToBackend('mgmt')}
-        />
       </section>
 
       {/* --- PARENT SECTION --- */}
@@ -523,7 +503,8 @@ const WeeklyReportView = () => {
             className={underlineInput}
             value={
               parentData.name ||
-              getItemValue(currentTermData?.parentName, increase, 'parentName')
+              currentTermData?.parentName?.[increase]?.parentName ||
+              ''
             }
             onChange={(e) => setParentData({ ...parentData, name: e.target.value })}
           />{' '}
@@ -538,7 +519,8 @@ const WeeklyReportView = () => {
               className="w-2/3 border-b border-black outline-none font-normal"
               value={
                 parentData.comment ||
-                getItemValue(currentTermData?.parentComment, increase, 'parentComment')
+                currentTermData?.parentComment?.[increase]?.parentComment ||
+                ''
               }
               onChange={(e) => setParentData({ ...parentData, comment: e.target.value })}
             />
@@ -550,7 +532,8 @@ const WeeklyReportView = () => {
               type="date"
               value={
                 parentData.date ||
-                getItemValue(currentTermData?.parentDate, increase, 'parentDate')
+                currentTermData?.parentDate?.[increase]?.parentDate ||
+                ''
               }
               onChange={(e) => setParentData({ ...parentData, date: e.target.value })}
             />
