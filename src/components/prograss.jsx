@@ -4,20 +4,26 @@ import { useParams } from 'react-router-dom';
 
 const WeeklyReport = () => {
   const days = ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+  const [day, setDay] = useState('')
+  const [items, setItems] = useState('')
+  
+  // 1. FIXED: useParams is a hook and must be called with ()
   const { id } = useParams(); 
 
   // --- STATES ---
-  const [response, setResponse] = useState(null);
-  const [items, setItems] = useState('sat'); // Default day
-  
-  // Selector States
-  const [selectedYear, setSelectedYear] = useState('2026');
-  const [selectedTerm, setSelectedTerm] = useState('thirdTerm');
 
+  const option = () =>{
+    return(<div>
+        <select name="" id="" onChange={(e)=>setItems(e.target.value)}>
+      {days.map((t) => (
+          <option value={t.slice(0,3).toLocaleLowerCase()}>{t}</option>
+      ))}
+      </select>
+    </div>)
+  }
   const [teacherData, setTeacherData] = useState([{
-      dayName: 'Saturday', 
-      dayKey: 'sat', 
-      date: '', tajweed: '', hifz: '', tajError: '', hifzError: '', toV: '', fromV: '', chapter: '' 
+      day:option(), date: '', remark: '', total: '', tajweed: '', 
+      hifz: '', tajError: '', hifzError: '', toV: '', fromV: '', chapter: '' 
     }]
   );
   
@@ -31,58 +37,51 @@ const WeeklyReport = () => {
 
   const [parentData, setParentData] = useState({ name: '', comment: '', date: '' });
   const [status, setStatus] = useState({ teacher: 'idle', mgmt: 'idle', parent: 'idle' });
+  useEffect(()=>{
+    async function fech(params) {
+      await axios.get(
+        `https://portal-database-seven.vercel.app/student/${id}`)
+    };fech()
+    
+  },[id])
 
-  // --- FETCH STUDENT DATA & SET DEFAULTS ---
-  useEffect(() => {
-    async function fetchStudent() {
-      try {
-        const res = await axios.get(`https://portal-database-seven.vercel.app/student/${id}`);
-        if (res.data) {
-          setResponse(res.data);
-          if (res.data.session) setSelectedYear(res.data.session);
-          if (res.data.term) setSelectedTerm(res.data.term);
-        }
-      } catch (err) {
-        console.error("Fetch error:", err);
-      }
-    }
-    if (id) fetchStudent();
-  }, [id]);
-
-  // Extract available years from student's academicYears structure
-  const currentYearBlock = response?.academicYears?.[0] || {};
-  const availableYears = Object.keys(currentYearBlock).filter((key) => key !== '_id');
-
-  // --- SUBMIT HANDLER ---
+  // --- POST HANDLER ---a
   const submitToBackend = async (section) => {
     setStatus(prev => ({ ...prev, [section]: 'loading' }));
     
     try {
-      let endpoint = `https://portal-database-seven.vercel.app/student/push/${id}/${items}`;
-      let payload = {};
+      // 2. FIXED: Accessing teacherData as an array and combining with single state objects
+      const payload = {
+        // We send the entire array of daily records
+         ...teacherData, 
+        // Metadata from teacherComments
+        week: teacherComments.week,
+        term: teacherComments.term,
+        teacherComment: teacherComments.comment,
+        teacherName: teacherComments.name,
+        teacherSign: teacherComments.signature,
+        // Management data
+        management: mgmtData,
+        // Parent data
+        parent: parentData
+      };
 
-      if (section === 'teacher') {
-        payload = {
-          year: selectedYear,
-          term: selectedTerm,
-          date: teacherData[0]?.date,
-          tajweed: teacherData[0]?.tajweed,
-          hifz: teacherData[0]?.hifz,
-          tajError: teacherData[0]?.tajError,
-          hifzError: teacherData[0]?.hifzError,
-          toV: teacherData[0]?.toV,
-          fromV: teacherData[0]?.fromV,
-          chapter: teacherData[0]?.chapter,
-          weeks: teacherComments.week,
-          terms: teacherComments.term, 
-          teacherComment: teacherComments.comment,
-          teacherName: teacherComments.name, 
-          teacherSign: teacherComments.signature
-        };
-      } else if (section === 'mgmt') {
-        payload = {
-          year: selectedYear,
-          term: selectedTerm,
+      const response = await axios.put(
+        `https://portal-database-seven.vercel.app/student/push/${id}/${items}`, 
+       {
+          date:teacherData[0]?.date,
+          tajweed:teacherData[0]?.tajweed,
+          hifz:teacherData[0]?.hifz,
+          tajError:teacherData[0]?.tajError,
+          hifzError:teacherData[0]?.hifzError,
+          toV:teacherData[0]?.toV,
+          fromV:teacherData[0]?.fromV,
+          chapter:teacherData[0]?.chapter,
+          weeks:teacherData[0]?.week,
+          terms:teacherData[0]?.term, 
+          teacherComment:teacherComments.comment,
+          teacherName:teacherComments.name, 
+          teacherSign:teacherComments.signature , 
           newStarting: mgmtData.newHifz.starting,
           newStopping: mgmtData.newHifz.stopping,
           newScore: mgmtData.newHifz.score,
@@ -90,12 +89,12 @@ const WeeklyReport = () => {
           prevStarting: mgmtData.prevHifz.starting,
           preStopping: mgmtData.prevHifz.stopping, 
           preScore: mgmtData.prevHifz.score,
-        };
-      }
-
-      const res = await axios.put(endpoint, payload);
+        
+        }
+      );
       
-      if (res.status === 200 || res.status === 204) {
+      // 3. FIXED: Axios uses response.status (Fetch uses response.ok)
+      if (response.status === 200 || response.status === 204) {
         setStatus(prev => ({ ...prev, [section]: 'success' }));
         setTimeout(() => setStatus(prev => ({ ...prev, [section]: 'idle' })), 3000);
       }
@@ -106,7 +105,7 @@ const WeeklyReport = () => {
     }
   };
 
-  // --- UI COMPONENTS ---
+  // --- UI COMPONENTS ---z
   const StatusMessage = ({ type }) => {
     if (type === 'idle') return null;
     const config = {
@@ -145,58 +144,9 @@ const WeeklyReport = () => {
   return (
     <div className="max-w-5xl mx-auto p-8 bg-white text-[11px] leading-tight text-black font-sans">
       
-      {/* --- YEAR & TERM SELECTOR BAR --- */}
-      <div className="flex justify-between items-center bg-gray-100 p-4 rounded mb-6 border border-gray-300 print:hidden">
-        <div className="flex items-center gap-2 font-bold">
-          <label>Target Academic Year:</label>
-          <select 
-            value={selectedYear} 
-            onChange={(e) => setSelectedYear(e.target.value)}
-            className="border border-gray-400 px-2 py-1 rounded bg-white outline-none cursor-pointer"
-          >
-            {availableYears.length > 0 ? (
-              availableYears.map((yr) => (
-                <option key={yr} value={yr}>{yr}</option>
-              ))
-            ) : (
-              <option value="2026">2026</option>
-            )}
-          </select>
-        </div>
-
-        <div className="flex items-center gap-2 font-bold">
-          <label>Target Academic Term:</label>
-          <select 
-            value={selectedTerm} 
-            onChange={(e) => setSelectedTerm(e.target.value)}
-            className="border border-gray-400 px-2 py-1 rounded bg-white outline-none cursor-pointer"
-          >
-            <option value="firstTerm">First Term</option>
-            <option value="secondTerm">Second Term</option>
-            <option value="thirdTerm">Third Term</option>
-          </select>
-        </div>
-      </div>
-
-      {/* Day Selector Dropdown */}
-      <div className="mb-6 bg-gray-100 p-3 rounded flex items-center gap-4">
-        <label className="font-bold">Select Day to Log:</label>
-        <select 
-          value={items} 
-          onChange={(e) => setItems(e.target.value)}
-          className="border border-gray-400 px-3 py-1 rounded bg-white outline-none font-bold"
-        >
-          {days.map((t) => (
-            <option key={t} value={t.slice(0, 3).toLowerCase()}>{t}</option>
-          ))}
-        </select>
-      </div>
-
       {/* --- TEACHER SECTION --- */}
       <section className="mb-10 border-b-2 border-gray-300 pb-8">
-        <h1 className="text-2xl font-bold text-center text-blue-900 mb-4 tracking-tighter">
-          TEACHER'S WEEKLY REPORT ({selectedYear} - {selectedTerm.toUpperCase()})
-        </h1>
+        <h1 className="text-2xl font-bold text-center text-blue-900 mb-4 tracking-tighter">TEACHER'S WEEKLY REPORT</h1>
         
         <div className="flex justify-between mb-4 font-bold text-[12px]">
           <div>Week <input className={underlineInput} value={teacherComments.week} onChange={e => setTeacherComments({...teacherComments, week: e.target.value})} /> الأسبوع</div>
@@ -234,7 +184,7 @@ const WeeklyReport = () => {
                     />
                   </td>
                 ))}
-                <td className="border border-black bg-gray-50 font-bold text-center">{row.dayName}</td>
+                <td  className= "border border-black bg-gray-50 font-bold text-center">{row.day}</td>
               </tr>
             ))}
           </tbody>
@@ -246,7 +196,7 @@ const WeeklyReport = () => {
           <div className="text-right">Teacher's Name: <input className={underlineInput} value={teacherComments.name} onChange={e => setTeacherComments({...teacherComments, name: e.target.value})} /> اسم المعلم</div>
         </div>
         
-        <SubmitButton section="teacher" label="Submit Teacher Report" onClick={() => submitToBackend('teacher')} />
+        <SubmitButton section="teacher" label="Submit Teacher Report" onClick={() => submitToBackend('teacher', 'teacher-report', { teacherData, teacherComments })} />
       </section>
 
       {/* --- MANAGEMENT SECTION --- */}
@@ -281,8 +231,22 @@ const WeeklyReport = () => {
           Qur'an HOD's Comment: <input className="w-3/4 border-b border-black outline-none font-normal" value={mgmtData.hodComment} onChange={e => setMgmtData({...mgmtData, hodComment: e.target.value})} /> ملاحظات رئيس القسم
         </div>
         
-        <SubmitButton section="mgmt" label="Submit Management Report" onClick={() => submitToBackend('mgmt')} />
+        <SubmitButton section="mgmt" label="Submit Management Report" onClick={() => submitToBackend('mgmt', 'management-report', mgmtData)} />
       </section>
+
+      {/* --- PARENT SECTION --- */}
+      {/* <section className="mb-6">
+        <h2 className="text-xl font-bold text-center text-blue-900 mb-4 uppercase">Parent/Guardian's Weekly Report</h2>
+        <p className="mb-4 leading-relaxed text-[12px] italic text-gray-800">
+          I, <input className={underlineInput} value={parentData.name} onChange={e => setParentData({...parentData, name: e.target.value})} /> the Parent/Guardian of the above named pupil/ward hereby certified that, I listened, observed and supervised my child's/ward's progress for this week in comparison with the school report and Allah is my witness.
+        </p>
+        <div className="space-y-4 mb-4">
+          <div className="font-bold">Parent/Guardian's Comment: <input className="w-2/3 border-b border-black outline-none font-normal" value={parentData.comment} onChange={e => setParentData({...parentData, comment: e.target.value})} /></div>
+          <div className="font-bold">Sign/Date: <input className={underlineInput} type="date" value={parentData.date} onChange={e => setParentData({...parentData, date: e.target.value})} /></div>
+        </div>
+
+        <SubmitButton section="parent" label="Submit Parent Report" onClick={() => submitToBackend('parent', 'parent-report', parentData)} />
+      </section> */}
 
       {/* --- GRADING KEY --- */}
       <div className="flex w-full border border-black text-center font-bold text-[10px] uppercase mt-10 bg-gray-50">
