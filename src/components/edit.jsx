@@ -36,19 +36,23 @@ const Edit = () => {
     return { Grade: "--", Remark: "--" };
   };
 
-  // --- FETCH DATA ---
+  // --- FETCH DATA & UNWRAP WRAPPERS SAFELY ---
   useEffect(() => {
     const fetchData = async () => {
       try {
         const res = await axios.get(`https://portal-database-seven.vercel.app/student/${id}`);
-        if (!res.data) throw new Error("No data received from API.");
+        console.log("RAW API RESPONSE:", res.data);
         
-        setResponse(res.data);
+        // Handles API responses whether nested inside student, data, or root
+        const studentRecord = res.data?.student || res.data?.data || res.data;
+        if (!studentRecord) throw new Error("No data received from API.");
         
-        const currentYearBlock = res.data?.academicYears?.[0] || {};
+        setResponse(studentRecord);
+        
+        const currentYearBlock = studentRecord?.academicYears?.[0] || {};
         const availableYears = Object.keys(currentYearBlock).filter(k => k !== '_id' && /^\d+$/.test(k));
         if (availableYears.length > 0) setSelectedYear(availableYears[availableYears.length - 1]);
-        if (res.data?.term) setSelectedTerm(res.data.term);
+        if (studentRecord?.term) setSelectedTerm(studentRecord.term);
 
       } catch (err) {
         console.error("Fetch error:", err);
@@ -61,7 +65,7 @@ const Edit = () => {
   const availableYears = Object.keys(currentYearBlock).filter(k => k !== '_id' && /^\d+$/.test(k));
   
   const activeYear = selectedYear || response?.session || availableYears[0] || '2026';
-  const activeTerm = selectedTerm || response?.term || 'thirdTerm';
+  const activeTerm = selectedTerm || response?.term || 'firstTerm';
 
   // --- BULLETPROOF NESTED TERM DATA EXTRACTOR ---
   const getNestedTermData = () => {
@@ -100,7 +104,7 @@ const Edit = () => {
   );
 
   const move = () => {
-    setTeacherData({}); // Clear local edits on page change
+    setTeacherData({}); 
     if (increase >= maxRecords - 1) {
       setIncrease(0);
     } else {
@@ -109,7 +113,7 @@ const Edit = () => {
   };
 
   const back = () => {
-    setTeacherData({}); // Clear local edits on page change
+    setTeacherData({}); 
     if (increase === 0) {
       setIncrease(maxRecords - 1);
     } else {
@@ -129,7 +133,6 @@ const Edit = () => {
 
   // --- SAFE VALUE RETRIEVAL ---
   const createDataSource = (dayKey, fieldKey) => {
-    // If local unsaved state exists, prioritize it
     if (teacherData[dayKey]?.[fieldKey] !== undefined) {
       return teacherData[dayKey][fieldKey];
     }
