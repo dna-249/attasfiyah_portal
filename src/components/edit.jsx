@@ -6,7 +6,6 @@ import { useParams } from 'react-router-dom';
 const Edit = () => {
   const days = ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
   const func = (id) => (id === 'Thursday' ? id.slice(0, 4).toLocaleLowerCase() : id.slice(0, 3).toLocaleLowerCase());
-  const lower = days.map((items) => func(items));
 
   const [response, setResponse] = useState(null);
   const [day, setDay] = useState('sat');
@@ -36,21 +35,19 @@ const Edit = () => {
     return { Grade: "--", Remark: "--" };
   };
 
-  // --- FETCH DATA & UNWRAP WRAPPERS SAFELY ---
+  // --- FETCH DATA ---
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const res = await axios.get(`https://portal-database-seven.vercel.app/student/${id}`);
-        console.log("RAW API RESPONSE:", res.data);
-        
-        // Handles API responses whether nested inside student, data, or root
+        const res = await axios.get(`[https://portal-database-seven.vercel.app/student/$](https://portal-database-seven.vercel.app/student/$){id}`);
         const studentRecord = res.data?.student || res.data?.data || res.data;
+        
         if (!studentRecord) throw new Error("No data received from API.");
         
         setResponse(studentRecord);
         
         const currentYearBlock = studentRecord?.academicYears?.[0] || {};
-        const availableYears = Object.keys(currentYearBlock).filter(k => k !== '_id' && /^\d+$/.test(k));
+        const availableYears = Object.keys(currentYearBlock?.['0'] || currentYearBlock).filter(k => k !== '_id' && /^\d+$/.test(k));
         if (availableYears.length > 0) setSelectedYear(availableYears[availableYears.length - 1]);
         if (studentRecord?.term) setSelectedTerm(studentRecord.term);
 
@@ -61,40 +58,28 @@ const Edit = () => {
     if (id) fetchData();
   }, [id]);
 
-  const currentYearBlock = response?.academicYears?.[0] || {};
-  const availableYears = Object.keys(currentYearBlock).filter(k => k !== '_id' && /^\d+$/.test(k));
-  
-  const activeYear = selectedYear || response?.session || availableYears[0] || '2026';
-  const activeTerm = selectedTerm || response?.term || 'firstTerm';
-
-  // --- BULLETPROOF NESTED TERM DATA EXTRACTOR ---
+  // Extract nested term data matching `academicYears[0]['0'][activeYear][activeTerm]`
   const getNestedTermData = () => {
     if (!response) return {};
     
     const ay0 = response?.academicYears?.[0];
     if (ay0) {
-      if (ay0['0']?.[activeYear]?.[activeTerm]) {
-        return ay0['0'][activeYear][activeTerm];
+      if (ay0['0']?.[selectedYear]?.[selectedTerm]) {
+        return ay0['0'][selectedYear][selectedTerm];
       }
-      if (ay0[activeYear]?.[activeTerm]) {
-        return ay0[activeYear][activeTerm];
-      }
-      if (ay0[activeTerm]) {
-        return ay0[activeTerm];
+      if (ay0[selectedYear]?.[selectedTerm]) {
+        return ay0[selectedYear][selectedTerm];
       }
     }
     
-    if (response[activeYear]?.[activeTerm]) {
-      return response[activeYear][activeTerm];
-    }
-    if (response[activeTerm]) {
-      return response[activeTerm];
-    }
-
-    return response;
+    return response?.[selectedYear]?.[selectedTerm] || {};
   };
 
   const currentTermData = getNestedTermData();
+
+  const currentYearBlock = response?.academicYears?.[0] || {};
+  const yearContainer = currentYearBlock?.['0'] || currentYearBlock;
+  const availableYears = Object.keys(yearContainer).filter(k => k !== '_id' && /^\d+$/.test(k));
 
   const maxRecords = Math.max(
     currentTermData?.sat?.length || 0,
@@ -131,7 +116,6 @@ const Edit = () => {
     return { total: "--" };
   };
 
-  // --- SAFE VALUE RETRIEVAL ---
   const createDataSource = (dayKey, fieldKey) => {
     if (teacherData[dayKey]?.[fieldKey] !== undefined) {
       return teacherData[dayKey][fieldKey];
@@ -218,10 +202,10 @@ const Edit = () => {
       const mgmt = managementFunc();
 
       const response = await axios.put(
-        `https://portal-database-seven.vercel.app/student/edit/${id}/${day}/${increase}`, 
+        `[https://portal-database-seven.vercel.app/student/edit/$](https://portal-database-seven.vercel.app/student/edit/$){id}/${day}/${increase}`, 
         {
-          year: activeYear,
-          term: activeTerm,
+          year: selectedYear,
+          term: selectedTerm,
           ...activeDayData,
           weeks: teacherComments?.week || currentTermData?.weeks?.[increase]?.weeks || '',
           terms: teacherComments?.term || currentTermData?.terms?.[increase]?.terms || '', 
@@ -279,7 +263,7 @@ const Edit = () => {
         >
           {status[section] === 'loading' ? 'Processing...' : label}
         </button>
-        <StatusMessage type={status[section]} />
+        <StatusMessage type="{status[section]}"/>
       </div>
     );
   };
@@ -295,7 +279,7 @@ const Edit = () => {
         <div className="flex items-center gap-2 font-bold">
           <label>Academic Year:</label>
           <select 
-            value={activeYear} 
+            value={selectedYear} 
             onChange={(e) => { setSelectedYear(e.target.value); setIncrease(0); setTeacherData({}); }}
             className="border border-gray-400 px-2 py-1 rounded bg-white outline-none cursor-pointer"
           >
@@ -310,7 +294,7 @@ const Edit = () => {
         <div className="flex items-center gap-2 font-bold">
           <label>Academic Term:</label>
           <select 
-            value={activeTerm} 
+            value={selectedTerm} 
             onChange={(e) => { setSelectedTerm(e.target.value); setIncrease(0); setTeacherData({}); }}
             className="border border-gray-400 px-2 py-1 rounded bg-white outline-none cursor-pointer"
           >
@@ -324,7 +308,7 @@ const Edit = () => {
       {/* --- TEACHER SECTION --- */}
       <section className="mb-10 border-b-2 border-gray-300 pb-8">
         <h1 className="text-2xl font-bold text-center text-blue-900 mb-4 tracking-tighter">
-          TEACHER'S WEEKLY REPORT ({activeYear} - {activeTerm.toUpperCase()})
+          TEACHER'S WEEKLY REPORT ({selectedYear} - {selectedTerm.toUpperCase()})
         </h1>
         
         <div className="flex justify-between mb-4 font-bold text-[12px]">
@@ -337,8 +321,8 @@ const Edit = () => {
             />{' '}
             الأسبوع
           </div>
-          <div style={{ paddingRight:"50px"}} className="cursor-pointer" onClick={() => back()}><FaArrowAltCircleLeft size={18}/></div>
-          <div style={{ paddingRight:"50px"}} className="cursor-pointer" onClick={() => move()}><FaArrowAltCircleRight size={18}/></div>
+          <div style={{ paddingRight:"50px"}} className="cursor-pointer" onClick={() => back()}><FaArrowAltCircleLeft size="{18}"/></div>
+          <div style={{ paddingRight:"50px"}} className="cursor-pointer" onClick={() => move()}><FaArrowAltCircleRight size="{18}"/></div>
           <div>
             Term{' '}
             <input 
@@ -436,8 +420,9 @@ const Edit = () => {
             اسم المعلم
           </div>
         </div>
-        <SubmitButton section="teacher" label="Submit Teacher Report" onClick={() => submitToBackend('teacher')} />
+         <SubmitButton section="teacher" label="Submit Teacher Report" onClick={() => submitToBackend('teacher')} />
       </section>
+
 
       {/* --- MANAGEMENT SECTION --- */}
       <section className="mb-10 border-b-2 border-gray-300 pb-8">
@@ -476,8 +461,7 @@ const Edit = () => {
           />{' '}
           ملاحظات رئيس القسم
         </div>
-        <SubmitButton section="mgmt" label="Submit Management Report" onClick={() => submitToBackend('mgmt')} />
-      </section>
+        <SubmitButton section="mgmt" label="Submit Management Report" onClick={() => submitToBackend('mgmt')} />  </section>
 
       {/* --- PARENT SECTION --- */}
       <section className="mb-6">
@@ -510,7 +494,8 @@ const Edit = () => {
             />
           </div>
         </div>
-        <SubmitButton section="parent" label="Submit Parent Report" onClick={() => submitToBackend('parent')} />
+              
+      <SubmitButton section="parent" label="Submit Parent Report" onClick={() => submitToBackend('parent')} />
       </section>
 
       {/* --- GRADING KEY --- */}
