@@ -30,8 +30,6 @@ const Edit = () => {
   const [teacherComments, setTeacherComments] = useState({ week: '', term: '', comment: '', name: '', signature: '' });
   
   const [mgmtData, setMgmtData] = useState({
-    newHifz: { starting: '', stopping: '', score: '', grade: '', remark: '' },
-    prevHifz: { starting: '', stopping: '', score: '', grade: '', remark: '' },
     hodComment: ''
   });
 
@@ -70,20 +68,38 @@ const Edit = () => {
     if (id) fetchData();
   }, [id]);
 
-  // --- NESTED TERM DATA EXTRACTOR ---
+  // Extract available numeric years
   const currentYearBlock = response?.academicYears?.[0] || {};
   const availableYears = Object.keys(currentYearBlock).filter(k => k !== '_id' && /^\d+$/.test(k));
   
   const activeYear = selectedYear || response?.session || availableYears[0] || '2026';
   const activeTerm = selectedTerm || response?.term || 'thirdTerm';
 
+  // --- BULLETPROOF NESTED TERM DATA EXTRACTOR ---
   const getNestedTermData = () => {
-    if (!response?.academicYears) return {};
-    const ay = response.academicYears[0];
-    if (!ay) return {};
-    const yearContainer = ay['0'] || ay;
-    const termContainer = yearContainer?.[activeYear] || ay?.[activeYear];
-    return termContainer?.[activeTerm] || {};
+    if (!response) return {};
+    
+    const ay0 = response?.academicYears?.[0];
+    if (ay0) {
+      if (ay0['0']?.[activeYear]?.[activeTerm]) {
+        return ay0['0'][activeYear][activeTerm];
+      }
+      if (ay0[activeYear]?.[activeTerm]) {
+        return ay0[activeYear][activeTerm];
+      }
+      if (ay0[activeTerm]) {
+        return ay0[activeTerm];
+      }
+    }
+    
+    if (response[activeYear]?.[activeTerm]) {
+      return response[activeYear][activeTerm];
+    }
+    if (response[activeTerm]) {
+      return response[activeTerm];
+    }
+
+    return response;
   };
 
   const currentTermData = getNestedTermData();
@@ -91,6 +107,7 @@ const Edit = () => {
   const maxRecords = Math.max(
     currentTermData?.sat?.length || 0,
     currentTermData?.sun?.length || 0,
+    currentTermData?.mon?.length || 0,
     1
   );
 
