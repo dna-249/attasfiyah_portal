@@ -37,8 +37,6 @@ const WeeklyReportView = () => {
   });
 
   const [mgmtData, setMgmtData] = useState({
-    newHifz: { starting: '', stopping: '', score: '', grade: '', remark: '' },
-    prevHifz: { starting: '', stopping: '', score: '', grade: '', remark: '' },
     hodComment: ''
   });
 
@@ -63,14 +61,18 @@ const WeeklyReportView = () => {
 
   // --- SAFE ACADEMIC TERM EXTRACTOR ---
   const activeYear = response?.session || '2026';
-  const activeTerm = response?.term || 'firstTerm';
+  const activeTerm = response?.term || 'thirdTerm';
 
-  const currentYearRecord =
-    response?.academicYears?.find((y) => y.year === activeYear) ||
-    response?.academicYears?.[0] ||
-    {};
+  const getNestedTermData = () => {
+    if (!response?.academicYears) return {};
+    const ay = response.academicYears[0];
+    if (!ay) return {};
+    const yearContainer = ay['0'] || ay;
+    const termContainer = yearContainer?.[activeYear] || ay?.[activeYear];
+    return termContainer?.[activeTerm] || {};
+  };
 
-  const currentTermData = currentYearRecord?.[activeTerm] || {};
+  const currentTermData = getNestedTermData();
 
   // --- HELPER FUNCTIONS ---
   const getGradeAndRemark = (score) => {
@@ -94,7 +96,12 @@ const WeeklyReportView = () => {
   };
 
   // --- PAGINATION LOGIC ---
-  const maxRecords = currentTermData?.sat?.length || 0;
+  const maxRecords = Math.max(
+    currentTermData?.sat?.length || 0,
+    currentTermData?.sun?.length || 0,
+    currentTermData?.mon?.length || 0,
+    1
+  );
 
   const move = () => {
     if (maxRecords <= 1) return;
@@ -116,23 +123,30 @@ const WeeklyReportView = () => {
 
   // --- DATA SOURCE CREATORS ---
   const managementFunc = () => {
-    const newScoreVal = currentTermData?.newScore?.[increase]?.newScore || '';
-    const preScoreVal = currentTermData?.preScore?.[increase]?.preScore || '';
+    const newScoreObj = currentTermData?.newScore?.[increase];
+    const preScoreObj = currentTermData?.preScore?.[increase];
+    const newStartObj = currentTermData?.newStarting?.[increase];
+    const newStopObj = currentTermData?.newStopping?.[increase];
+    const preStartObj = currentTermData?.prevStarting?.[increase];
+    const preStopObj = currentTermData?.preStopping?.[increase];
+
+    const newScoreVal = typeof newScoreObj === 'object' ? (newScoreObj?.newScore || '') : (newScoreObj || '');
+    const preScoreVal = typeof preScoreObj === 'object' ? (preScoreObj?.preScore || '') : (preScoreObj || '');
 
     const nScore = getGradeAndRemark(newScoreVal);
     const pScore = getGradeAndRemark(preScoreVal);
 
     return {
       newHifz: {
-        starting: currentTermData?.newStarting?.[increase]?.newStarting || '',
-        stopping: currentTermData?.newStopping?.[increase]?.newStopping || '',
+        starting: typeof newStartObj === 'object' ? (newStartObj?.newStarting || '') : (newStartObj || ''),
+        stopping: typeof newStopObj === 'object' ? (newStopObj?.newStopping || '') : (newStopObj || ''),
         score: newScoreVal,
         grade: nScore.Grade,
         remark: nScore.Remark
       },
       prevHifz: {
-        starting: currentTermData?.prevStarting?.[increase]?.prevStarting || '',
-        stopping: currentTermData?.preStopping?.[increase]?.preStopping || '',
+        starting: typeof preStartObj === 'object' ? (preStartObj?.prevStarting || '') : (preStartObj || ''),
+        stopping: typeof preStopObj === 'object' ? (preStopObj?.preStopping || '') : (preStopObj || ''),
         score: preScoreVal,
         grade: pScore.Grade,
         remark: pScore.Remark
@@ -244,7 +258,7 @@ const WeeklyReportView = () => {
             Week{' '}
             <input
               className={underlineInput}
-              value={teacherComments.week || currentTermData?.weeks || ''}
+              value={teacherComments.week || currentTermData?.weeks?.[increase]?.weeks || ''}
               onChange={(e) => setTeacherComments({ ...teacherComments, week: e.target.value })}
             />{' '}
             الأسبوع
@@ -267,7 +281,7 @@ const WeeklyReportView = () => {
             Term{' '}
             <input
               className={underlineInput}
-              value={teacherComments.term || currentTermData?.terms || ''}
+              value={teacherComments.term || currentTermData?.terms?.[increase]?.terms || ''}
               onChange={(e) => setTeacherComments({ ...teacherComments, term: e.target.value })}
             />{' '}
             الفترة
@@ -277,61 +291,17 @@ const WeeklyReportView = () => {
         <table className="w-full border-collapse border border-black mb-4">
           <thead className="bg-gray-100 uppercase text-[9px]">
             <tr className="h-12">
-              <th className="border border-black p-1">
-                التاريخ
-                <br />
-                Date
-              </th>
-              <th className="border border-black p-1">
-                التقدير
-                <br />
-                Remark
-              </th>
-              <th className="border border-black p-1 w-12">
-                مجموع
-                <br />
-                Total (100)
-              </th>
-              <th className="border border-black p-1">
-                درجة التجويد
-                <br />
-                Tajweed (30)
-              </th>
-              <th className="border border-black p-1">
-                درجة الحفظ
-                <br />
-                Hifz (70)
-              </th>
-              <th className="border border-black p-1">
-                أخطاء تجويدية
-                <br />
-                Tajweed Rule
-              </th>
-              <th className="border border-black p-1">
-                أخطاء حفظية
-                <br />
-                Hifz Point
-              </th>
-              <th className="border border-black p-1">
-                إلى آية
-                <br />
-                To Verse
-              </th>
-              <th className="border border-black p-1">
-                من آية
-                <br />
-                From Verse
-              </th>
-              <th className="border border-black p-1">
-                سورة
-                <br />
-                Chapters
-              </th>
-              <th className="border border-black p-1 bg-gray-200 uppercase">
-                Days
-                <br />
-                الأيام
-              </th>
+              <th className="border border-black p-1">التاريخ<br />Date</th>
+              <th className="border border-black p-1">التقدير<br />Remark</th>
+              <th className="border border-black p-1 w-12">مجموع<br />Total (100)</th>
+              <th className="border border-black p-1">درجة التجويد<br />Tajweed (30)</th>
+              <th className="border border-black p-1">درجة الحفظ<br />Hifz (70)</th>
+              <th className="border border-black p-1">أخطاء تجويدية<br />Tajweed Rule</th>
+              <th className="border border-black p-1">أخطاء حفظية<br />Hifz Point</th>
+              <th className="border border-black p-1">إلى آية<br />To Verse</th>
+              <th className="border border-black p-1">من آية<br />From Verse</th>
+              <th className="border border-black p-1">سورة<br />Chapters</th>
+              <th className="border border-black p-1 bg-gray-200 uppercase">Days<br />الأيام</th>
             </tr>
           </thead>
           <tbody>
@@ -359,7 +329,6 @@ const WeeklyReportView = () => {
                         updated[idx][field] = e.target.value;
                         setTeacherData(updated);
                       }}
-                      readOnly
                     />
                   </td>
                 ))}
@@ -376,7 +345,7 @@ const WeeklyReportView = () => {
             Teacher's Comments:{' '}
             <input
               className="w-3/4 border-b border-black outline-none"
-              value={teacherComments.comment || currentTermData?.teacherComment || ''}
+              value={teacherComments.comment || currentTermData?.teacherComment?.[increase]?.teacherComment || ''}
               onChange={(e) =>
                 setTeacherComments({ ...teacherComments, comment: e.target.value })
               }
@@ -387,7 +356,7 @@ const WeeklyReportView = () => {
             Signature:{' '}
             <input
               className={underlineInput}
-              value={teacherComments.signature || currentTermData?.teacherSign || ''}
+              value={teacherComments.signature || currentTermData?.teacherSign?.[increase]?.teacherSign || ''}
               onChange={(e) =>
                 setTeacherComments({ ...teacherComments, signature: e.target.value })
               }
@@ -398,7 +367,7 @@ const WeeklyReportView = () => {
             Teacher's Name:{' '}
             <input
               className={underlineInput}
-              value={teacherComments.name || currentTermData?.teacherName || ''}
+              value={teacherComments.name || currentTermData?.teacherName?.[increase]?.teacherName || ''}
               onChange={(e) => setTeacherComments({ ...teacherComments, name: e.target.value })}
             />{' '}
             اسم المعلم
@@ -414,36 +383,12 @@ const WeeklyReportView = () => {
         <table className="w-full border-collapse border border-black text-center mb-4">
           <thead className="bg-gray-100 h-10 uppercase text-[9px]">
             <tr>
-              <th className="border border-black p-1">
-                التطبيق
-                <br />
-                Remark
-              </th>
-              <th className="border border-black p-1">
-                الدرجة
-                <br />
-                Grade
-              </th>
-              <th className="border border-black p-1">
-                النتيجة
-                <br />
-                Score
-              </th>
-              <th className="border border-black p-1">
-                الإنتهاء
-                <br />
-                Stopping
-              </th>
-              <th className="border border-black p-1">
-                الإبتداء
-                <br />
-                Starting
-              </th>
-              <th className="border border-black p-1 bg-gray-200 w-40 font-bold">
-                الموضوع
-                <br />
-                Topic
-              </th>
+              <th className="border border-black p-1">التطبيق<br />Remark</th>
+              <th className="border border-black p-1">الدرجة<br />Grade</th>
+              <th className="border border-black p-1">النتيجة<br />Score</th>
+              <th className="border border-black p-1">الإنتهاء<br />Stopping</th>
+              <th className="border border-black p-1">الإبتداء<br />Starting</th>
+              <th className="border border-black p-1 bg-gray-200 w-40 font-bold">الموضوع<br />Topic</th>
             </tr>
           </thead>
           <tbody>
@@ -457,15 +402,7 @@ const WeeklyReportView = () => {
                     <input
                       className={inputClass}
                       readOnly
-                      value={
-                        mgmtData[topic.k][field] || managementFunc()[topic.k][field] || ''
-                      }
-                      onChange={(e) =>
-                        setMgmtData({
-                          ...mgmtData,
-                          [topic.k]: { ...mgmtData[topic.k], [field]: e.target.value }
-                        })
-                      }
+                      value={managementFunc()[topic.k][field] || ''}
                     />
                   </td>
                 ))}
