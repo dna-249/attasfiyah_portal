@@ -11,6 +11,10 @@ const WeeklyReportView = () => {
   const [increase, setIncrease] = useState(0);
   const { id } = useParams();
 
+  // --- SELECTOR STATES ---
+  const [selectedYear, setSelectedYear] = useState('');
+  const [selectedTerm, setSelectedTerm] = useState('');
+
   // --- STATES ---
   const [teacherData, setTeacherData] = useState(
     lower.map((day) => ({
@@ -43,7 +47,7 @@ const WeeklyReportView = () => {
   const [parentData, setParentData] = useState({ name: '', comment: '', date: '' });
   const [status, setStatus] = useState({ teacher: 'idle', mgmt: 'idle', parent: 'idle' });
 
-  // --- FETCH DATA ---
+  // --- FETCH DATA & INITIALIZE DEFAULTS ---
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -52,6 +56,22 @@ const WeeklyReportView = () => {
           throw new Error('No data received from API.');
         }
         setResponse(res.data);
+
+        // Set default academic year
+        const currentYearBlock = res.data?.academicYears?.[0] || {};
+        const availableYears = Object.keys(currentYearBlock).filter(
+          (key) => key !== '_id' && /^\d+$/.test(key)
+        );
+
+        const defaultYear =
+          res.data?.session ||
+          (availableYears.length > 0 ? availableYears[availableYears.length - 1] : new Date().getFullYear().toString());
+        setSelectedYear(defaultYear);
+
+        // Set default academic term
+        const defaultTerm = res.data?.term || 'thirdTerm';
+        setSelectedTerm(defaultTerm);
+
       } catch (err) {
         console.error('Fetch error:', err);
       }
@@ -59,10 +79,16 @@ const WeeklyReportView = () => {
     if (id) fetchData();
   }, [id]);
 
-  // --- SAFE ACADEMIC TERM EXTRACTOR ---
-  const activeYear = response?.session || '2026';
-  const activeTerm = response?.term || 'thirdTerm';
+  // Extract available numeric years
+  const currentYearBlock = response?.academicYears?.[0] || {};
+  const availableYears = Object.keys(currentYearBlock).filter(
+    (key) => key !== '_id' && /^\d+$/.test(key)
+  );
 
+  const activeYear = selectedYear || response?.session || availableYears[0] || '2026';
+  const activeTerm = selectedTerm || response?.term || 'thirdTerm';
+
+  // --- SAFE ACADEMIC TERM EXTRACTOR ---
   const getNestedTermData = () => {
     if (!response?.academicYears) return {};
     const ay = response.academicYears[0];
@@ -190,9 +216,12 @@ const WeeklyReportView = () => {
       const res = await axios.put(
         `https://portal-database-seven.vercel.app/student/push/${id}/day`,
         {
+          year: activeYear,
+          term: activeTerm,
           parentName: parentData.name,
           parentComment: parentData.comment,
-          parentDate: parentData.date
+          parentDate: parentData.date,
+          hodComment: mgmtData.hodComment
         }
       );
 
@@ -247,10 +276,50 @@ const WeeklyReportView = () => {
 
   return (
     <div className="max-w-5xl mx-auto p-8 bg-white text-[11px] leading-tight text-black font-sans">
+      
+      {/* --- YEAR & TERM SELECTOR BAR --- */}
+      <div className="flex justify-between items-center bg-gray-100 p-4 rounded mb-6 border border-gray-300 print:hidden">
+        <div className="flex items-center gap-2 font-bold">
+          <label>Academic Year:</label>
+          <select 
+            value={activeYear} 
+            onChange={(e) => {
+              setSelectedYear(e.target.value);
+              setIncrease(0);
+            }}
+            className="border border-gray-400 px-2 py-1 rounded bg-white outline-none cursor-pointer"
+          >
+            {availableYears.length > 0 ? (
+              availableYears.map((yr) => (
+                <option key={yr} value={yr}>{yr}</option>
+              ))
+            ) : (
+              <option value="2026">2026</option>
+            )}
+          </select>
+        </div>
+
+        <div className="flex items-center gap-2 font-bold">
+          <label>Academic Term:</label>
+          <select 
+            value={activeTerm} 
+            onChange={(e) => {
+              setSelectedTerm(e.target.value);
+              setIncrease(0);
+            }}
+            className="border border-gray-400 px-2 py-1 rounded bg-white outline-none cursor-pointer"
+          >
+            <option value="firstTerm">First Term</option>
+            <option value="secondTerm">Second Term</option>
+            <option value="thirdTerm">Third Term</option>
+          </select>
+        </div>
+      </div>
+
       {/* --- TEACHER SECTION --- */}
       <section className="mb-10 border-b-2 border-gray-300 pb-8">
         <h1 className="text-2xl font-bold text-center text-blue-900 mb-4 tracking-tighter">
-          TEACHER'S WEEKLY REPORT
+          TEACHER'S WEEKLY REPORT ({activeYear} - {activeTerm.toUpperCase()})
         </h1>
 
         <div className="flex justify-between mb-4 font-bold text-[12px]">
