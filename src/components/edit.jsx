@@ -19,21 +19,11 @@ const Edit = () => {
   const [selectedYear, setSelectedYear] = useState('2026');
   const [selectedTerm, setSelectedTerm] = useState('thirdTerm');
 
-  // --- STATES ---
-  const [teacherData, setTeacherData] = useState(
-    days.map(dayName => ({ 
-      day: func(dayName), date: '', remark: '', total: '', tajweed: '', 
-      hifz: '', tajError: '', hifzError: '', toV: '', fromV: '', chapter: '' 
-    }))
-  );
-  
-  const [teacherComments, setTeacherComments] = useState({ week: '', term: '', comment: '', name: '', signature: '' });
-  
-  const [mgmtData, setMgmtData] = useState({
-    hodComment: ''
-  });
-
-  const [parentData, setParentData] = useState({ name: '', comment: '', date: '' });
+  // --- FORM LOCAL INPUT OVERRIDES ---
+  const [teacherData, setTeacherData] = useState({});
+  const [teacherComments, setTeacherComments] = useState({});
+  const [mgmtData, setMgmtData] = useState({});
+  const [parentData, setParentData] = useState({});
   const [status, setStatus] = useState({ teacher: 'idle', mgmt: 'idle', parent: 'idle' });
 
   const getGradeAndRemark = (score) => {
@@ -46,7 +36,7 @@ const Edit = () => {
     return { Grade: "--", Remark: "--" };
   };
 
-  // --- FETCH DATA CORRECTLY ---
+  // --- FETCH DATA ---
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -55,7 +45,6 @@ const Edit = () => {
         
         setResponse(res.data);
         
-        // Initialize default year/term from response
         const currentYearBlock = res.data?.academicYears?.[0] || {};
         const availableYears = Object.keys(currentYearBlock).filter(k => k !== '_id' && /^\d+$/.test(k));
         if (availableYears.length > 0) setSelectedYear(availableYears[availableYears.length - 1]);
@@ -68,7 +57,6 @@ const Edit = () => {
     if (id) fetchData();
   }, [id]);
 
-  // Extract available numeric years
   const currentYearBlock = response?.academicYears?.[0] || {};
   const availableYears = Object.keys(currentYearBlock).filter(k => k !== '_id' && /^\d+$/.test(k));
   
@@ -112,6 +100,7 @@ const Edit = () => {
   );
 
   const move = () => {
+    setTeacherData({}); // Clear unsaved local edits on week switch
     if (increase >= maxRecords - 1) {
       setIncrease(0);
     } else {
@@ -120,6 +109,7 @@ const Edit = () => {
   };
 
   const back = () => {
+    setTeacherData({}); // Clear unsaved local edits on week switch
     if (increase === 0) {
       setIncrease(maxRecords - 1);
     } else {
@@ -137,25 +127,23 @@ const Edit = () => {
     return { total: "--" };
   };
 
-  const createDataSource = (daily, k) => {
-    const dayArray = currentTermData?.[daily] || [];
+  // --- FIXED DATA SOURCE CREATOR ---
+  const createDataSource = (dayKey, fieldKey) => {
+    // Check if user is typing locally in state first
+    if (teacherData[dayKey]?.[fieldKey] !== undefined) {
+      return teacherData[dayKey][fieldKey];
+    }
+
+    const dayArray = currentTermData?.[dayKey] || [];
     const record = dayArray[increase] || {};
 
     const { total } = totalScore(record.hifz, record.hifzError, record.tajweed, record.tajError);
-    const { Remark } = getGradeAndRemark(total);  
-               
-    return {
-      date: record.date || '',
-      remark: Remark,
-      total: total,
-      tajweed: record.tajweed || '', 
-      hifz: record.hifz || '',
-      tajError: record.tajError || '', 
-      hifzError: record.hifzError || '',
-      toV: record.toV || '',
-      fromV: record.fromV || '',
-      chapter: record.chapter || ''
-    };
+    const { Remark } = getGradeAndRemark(total);
+
+    if (fieldKey === 'total') return total;
+    if (fieldKey === 'remark') return Remark;
+
+    return record[fieldKey] !== undefined ? record[fieldKey] : '';
   };
 
   const managementFunc = () => {
@@ -213,7 +201,17 @@ const Edit = () => {
     setStatus(prev => ({ ...prev, [section]: 'loading' }));
     
     try {
-      const activeDayData = createDataSource(day);
+      const activeDayData = {
+        date: createDataSource(day, 'date'),
+        tajweed: createDataSource(day, 'tajweed'),
+        hifz: createDataSource(day, 'hifz'),
+        tajError: createDataSource(day, 'tajError'),
+        hifzError: createDataSource(day, 'hifzError'),
+        toV: createDataSource(day, 'toV'),
+        fromV: createDataSource(day, 'fromV'),
+        chapter: createDataSource(day, 'chapter'),
+      };
+
       const mgmt = managementFunc();
 
       const response = await axios.put(
@@ -221,26 +219,19 @@ const Edit = () => {
         {
           year: activeYear,
           term: activeTerm,
-          date: teacherData[ids]?.date || activeDayData.date,
-          tajweed: teacherData[ids]?.tajweed || activeDayData.tajweed,
-          hifz: teacherData[ids]?.hifz || activeDayData.hifz,
-          tajError: teacherData[ids]?.tajError || activeDayData.tajError,
-          hifzError: teacherData[ids]?.hifzError || activeDayData.hifzError,
-          toV: teacherData[ids]?.toV || activeDayData.toV,
-          fromV: teacherData[ids]?.fromV || activeDayData.fromV,
-          chapter: teacherData[ids]?.chapter || activeDayData.chapter,
+          ...activeDayData,
           weeks: teacherComments?.week || currentTermData?.weeks?.[increase]?.weeks || '',
           terms: teacherComments?.term || currentTermData?.terms?.[increase]?.terms || '', 
           teacherComment: teacherComments.comment || currentTermData?.teacherComment?.[increase]?.teacherComment || '',
           teacherName: teacherComments.name || currentTermData?.teacherName?.[increase]?.teacherName || '', 
           teacherSign: teacherComments.signature || currentTermData?.teacherSign?.[increase]?.teacherSign || '', 
-          newStarting: mgmtData.newHifz.starting || mgmt.newHifz.starting,
-          newStopping: mgmtData.newHifz.stopping || mgmt.newHifz.stopping,
-          newScore: mgmtData.newHifz.score || mgmt.newHifz.score,
+          newStarting: mgmt.newHifz.starting,
+          newStopping: mgmt.newHifz.stopping,
+          newScore: mgmt.newHifz.score,
           hodComment: mgmtData.hodComment || mgmt.hodComment,
-          prevStarting: mgmtData.prevHifz.starting || mgmt.prevHifz.starting,
-          preStopping: mgmtData.prevHifz.stopping || mgmt.prevHifz.stopping, 
-          preScore: mgmtData.prevHifz.score || mgmt.prevHifz.score,
+          prevStarting: mgmt.prevHifz.starting,
+          preStopping: mgmt.prevHifz.stopping, 
+          preScore: mgmt.prevHifz.score,
           parentName: parentData.name || currentTermData?.parentName?.[increase]?.parentName || '',
           parentComment: parentData.comment || currentTermData?.parentComment?.[increase]?.parentComment || '',
           parentDate: parentData.date || currentTermData?.parentDate?.[increase]?.parentDate || ''
@@ -302,7 +293,7 @@ const Edit = () => {
           <label>Academic Year:</label>
           <select 
             value={activeYear} 
-            onChange={(e) => { setSelectedYear(e.target.value); setIncrease(0); }}
+            onChange={(e) => { setSelectedYear(e.target.value); setIncrease(0); setTeacherData({}); }}
             className="border border-gray-400 px-2 py-1 rounded bg-white outline-none cursor-pointer"
           >
             {availableYears.length > 0 ? (
@@ -317,7 +308,7 @@ const Edit = () => {
           <label>Academic Term:</label>
           <select 
             value={activeTerm} 
-            onChange={(e) => { setSelectedTerm(e.target.value); setIncrease(0); }}
+            onChange={(e) => { setSelectedTerm(e.target.value); setIncrease(0); setTeacherData({}); }}
             className="border border-gray-400 px-2 py-1 rounded bg-white outline-none cursor-pointer"
           >
             <option value="firstTerm">First Term</option>
@@ -355,32 +346,39 @@ const Edit = () => {
             </tr>
           </thead>
           <tbody>
-            {teacherData.map((row, idx) => {
-              const dataSource = createDataSource(row.day, idx);
+            {days.map((dayName, idx) => {
+              const dayKey = func(dayName);
               return (
-                <tr key={idx} className="h-8">
-                  {['date', 'remark', 'total', 'tajweed', 'hifz', 'tajError', 'hifzError', 'toV', 'fromV', 'chapter'].map((field) => (
-                    <td key={field} className="border border-black">
+                <tr key={dayKey} className="h-8">
+                  {['date', 'remark', 'total', 'tajweed', 'hifz', 'tajError', 'hifzError', 'toV', 'fromV', 'chapter'].map((fieldKey) => (
+                    <td key={fieldKey} className="border border-black">
                       <input 
-                        type={field === "date" ? "date" : "text"} 
+                        type={fieldKey === "date" ? "date" : "text"} 
                         className={inputClass} 
-                        value={row[field] || dataSource[field] || ''}
+                        value={createDataSource(dayKey, fieldKey)}
+                        readOnly={fieldKey === 'remark' || fieldKey === 'total'}
                         onChange={(e) => {
-                          const updated = [...teacherData];
-                          updated[idx][field] = e.target.value;
-                          setTeacherData(updated);
+                          const val = e.target.value;
+                          setTeacherData(prev => ({
+                            ...prev,
+                            [dayKey]: {
+                              ...prev[dayKey],
+                              [fieldKey]: val
+                            }
+                          }));
+                          setDay(dayKey);
                           setIds(idx);
                         }} 
                       />
                     </td>
                   ))}
                   <td 
-                    onClick={() => setDay(row.day)} 
+                    onClick={() => setDay(dayKey)} 
                     className={`border border-black font-bold text-center cursor-pointer transition-all ${
-                      day === row.day ? "bg-blue-600 text-white" : "bg-gray-50 text-black hover:bg-gray-200"
+                      day === dayKey ? "bg-blue-600 text-white" : "bg-gray-50 text-black hover:bg-gray-200"
                     }`}
                   >
-                    {row.day.toUpperCase()}
+                    {dayKey.toUpperCase()}
                   </td>
                 </tr>
               );
