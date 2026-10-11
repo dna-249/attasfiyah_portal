@@ -58,24 +58,17 @@ const WeeklyReportView = () => {
         
         setResponse(res.data);
 
-        // 1. SET DEFAULT YEAR (From student session, or first academic year entry, or current calendar year)
         const currentYearBlock = res.data?.academicYears?.[0] || {};
-        // Replace this line:
-          // const availableYears = Object.keys(currentYearBlock).filter((key) => key !== '_id');
+        const availableYears = Object.keys(currentYearBlock).filter((key) => 
+          key !== '_id' && /^\d+$/.test(key)
+        );
 
-          // With this strict numeric filter:
-          const availableYears = Object.keys(currentYearBlock).filter((key) => 
-            key !== '_id' && /^\d+$/.test(key) // Ensures only keys that are strictly digits (e.g. "2025", "2026") are treated as years
-          );
-
-        
         const defaultYear =
           res.data?.session ||
           (availableYears.length > 0 ? availableYears[availableYears.length - 1] : new Date().getFullYear().toString());
 
         setSelectedYear(defaultYear);
 
-        // 2. SET DEFAULT TERM (From student document term or fallback to "thirdTerm")
         const defaultTerm = res.data?.term || 'thirdTerm';
         setSelectedTerm(defaultTerm);
 
@@ -86,16 +79,14 @@ const WeeklyReportView = () => {
     if (id) fetchData();
   }, [id]);
 
-  // --- SAFELY EXTRACT YEAR AND TERM DATA ---
   const currentYearBlock = response?.academicYears?.[0] || {};
-  const availableYears = Object.keys(currentYearBlock).filter((key) => key !== '_id');
+  const availableYears = Object.keys(currentYearBlock).filter((key) => key !== '_id' && /^\d+$/.test(key));
 
   const activeYear = selectedYear || response?.session || availableYears[0] || '2026';
   const activeTerm = selectedTerm || response?.term || 'thirdTerm';
 
   const currentTermData = currentYearBlock?.[activeYear]?.[activeTerm] || {};
 
-  // Helper to extract value safely whether stored as Array or Object/Map
   const getItemValue = (container, index, field) => {
     if (!container) return '';
     if (Array.isArray(container)) {
@@ -108,7 +99,6 @@ const WeeklyReportView = () => {
     return '';
   };
 
-  // --- HELPER CALCULATIONS ---
   const getGradeAndRemark = (score) => {
     const numScore = parseFloat(score);
     if (numScore >= 75) return { Grade: 'A', Remark: 'EXCELLENT' };
@@ -129,7 +119,6 @@ const WeeklyReportView = () => {
     return { total: '--' };
   };
 
-  // --- PAGINATION LOGIC ---
   const maxRecords = Math.max(
     currentTermData?.sat?.length || 0,
     currentTermData?.sun?.length || 0,
@@ -154,7 +143,6 @@ const WeeklyReportView = () => {
     }
   };
 
-  // --- DATA EXTRACTOR FOR DAILY ROWS ---
   const createDataSource = (daily, field) => {
     const dayArray = currentTermData?.[daily] || [];
     const dayRecord = dayArray[increase] || {};
@@ -183,25 +171,24 @@ const WeeklyReportView = () => {
     return values[field] || '';
   };
 
-  // --- MANAGEMENT DATA EXTRACTOR ---
   const managementFunc = () => {
-    const newScoreVal = getItemValue(currentTermData?.newScore, increase, 'newScore');
-    const preScoreVal = getItemValue(currentTermData?.preScore, increase, 'preScore');
+    const newScoreVal = mgmtData.newHifz.score || getItemValue(currentTermData?.newScore, increase, 'newScore');
+    const preScoreVal = mgmtData.prevHifz.score || getItemValue(currentTermData?.preScore, increase, 'preScore');
 
     const nScore = getGradeAndRemark(newScoreVal);
     const pScore = getGradeAndRemark(preScoreVal);
 
     return {
       newHifz: {
-        starting: getItemValue(currentTermData?.newStarting, increase, 'newStarting'),
-        stopping: getItemValue(currentTermData?.newStopping, increase, 'newStopping'),
+        starting: mgmtData.newHifz.starting || getItemValue(currentTermData?.newStarting, increase, 'newStarting'),
+        stopping: mgmtData.newHifz.stopping || getItemValue(currentTermData?.newStopping, increase, 'newStopping'),
         score: newScoreVal,
         grade: nScore.Grade,
         remark: nScore.Remark
       },
       prevHifz: {
-        starting: getItemValue(currentTermData?.prevStarting, increase, 'prevStarting'),
-        stopping: getItemValue(currentTermData?.preStopping, increase, 'preStopping'),
+        starting: mgmtData.prevHifz.starting || getItemValue(currentTermData?.prevStarting, increase, 'prevStarting'),
+        stopping: mgmtData.prevHifz.stopping || getItemValue(currentTermData?.preStopping, increase, 'preStopping'),
         score: preScoreVal,
         grade: pScore.Grade,
         remark: pScore.Remark
@@ -209,18 +196,37 @@ const WeeklyReportView = () => {
     };
   };
 
-  // --- SUBMIT HANDLER ---
+  // --- FIXED SUBMIT HANDLER ---
   const submitToBackend = async (section) => {
     setStatus((prev) => ({ ...prev, [section]: 'loading' }));
 
     try {
+      let payload = { year: activeYear, term: activeTerm };
+
+      if (section === 'mgmt') {
+        const currentMgmt = managementFunc();
+        payload = {
+          ...payload,
+          newStarting: currentMgmt.newHifz.starting,
+          newStopping: currentMgmt.newHifz.stopping,
+          newScore: currentMgmt.newHifz.score,
+          prevStarting: currentMgmt.prevHifz.starting,
+          preStopping: currentMgmt.prevHifz.stopping,
+          preScore: currentMgmt.prevHifz.score,
+          hodComment: mgmtData.hodComment || getItemValue(currentTermData?.hodComment, increase, 'hodComment')
+        };
+      } else if (section === 'parent') {
+        payload = {
+          ...payload,
+          parentName: parentData.name || getItemValue(currentTermData?.parentName, increase, 'parentName'),
+          parentComment: parentData.comment || getItemValue(currentTermData?.parentComment, increase, 'parentComment'),
+          parentDate: parentData.date || getItemValue(currentTermData?.parentDate, increase, 'parentDate')
+        };
+      }
+
       const res = await axios.put(
         `https://portal-database-seven.vercel.app/student/push/${id}/day`,
-        {
-          parentName: parentData.name,
-          parentComment: parentData.comment,
-          parentDate: parentData.date
-        }
+        payload
       );
 
       if (res.status === 200 || res.status === 204) {
@@ -234,7 +240,6 @@ const WeeklyReportView = () => {
     }
   };
 
-  // --- UI COMPONENTS ---
   const StatusMessage = ({ type }) => {
     if (type === 'idle') return null;
     const config = {
@@ -468,10 +473,7 @@ const WeeklyReportView = () => {
                   <td key={field} className="border border-black">
                     <input
                       className={inputClass}
-                      readOnly
-                      value={
-                        mgmtData[topic.k][field] || managementFunc()[topic.k][field] || ''
-                      }
+                      value={mgmtData[topic.k][field] || managementFunc()[topic.k][field] || ''}
                       onChange={(e) =>
                         setMgmtData({
                           ...mgmtData,
@@ -501,6 +503,13 @@ const WeeklyReportView = () => {
           />{' '}
           ملاحظات رئيس القسم
         </div>
+
+        {/* Added missing submit button for management */}
+        <SubmitButton
+          section="mgmt"
+          label="Submit Management Report"
+          onClick={() => submitToBackend('mgmt')}
+        />
       </section>
 
       {/* --- PARENT SECTION --- */}
