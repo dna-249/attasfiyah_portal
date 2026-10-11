@@ -19,11 +19,11 @@ const Edit = () => {
   const [selectedYear, setSelectedYear] = useState('2026');
   const [selectedTerm, setSelectedTerm] = useState('thirdTerm');
 
-  // --- FORM LOCAL INPUT OVERRIDES ---
+  // --- FORM OVERRIDE STATES ---
   const [teacherData, setTeacherData] = useState({});
-  const [teacherComments, setTeacherComments] = useState({});
-  const [mgmtData, setMgmtData] = useState({});
-  const [parentData, setParentData] = useState({});
+  const [teacherComments, setTeacherComments] = useState({ week: '', term: '', comment: '', name: '', signature: '' });
+  const [mgmtData, setMgmtData] = useState({ hodComment: '' });
+  const [parentData, setParentData] = useState({ name: '', comment: '', date: '' });
   const [status, setStatus] = useState({ teacher: 'idle', mgmt: 'idle', parent: 'idle' });
 
   const getGradeAndRemark = (score) => {
@@ -100,7 +100,7 @@ const Edit = () => {
   );
 
   const move = () => {
-    setTeacherData({}); // Clear unsaved local edits on week switch
+    setTeacherData({}); // Clear local edits on page change
     if (increase >= maxRecords - 1) {
       setIncrease(0);
     } else {
@@ -109,7 +109,7 @@ const Edit = () => {
   };
 
   const back = () => {
-    setTeacherData({}); // Clear unsaved local edits on week switch
+    setTeacherData({}); // Clear local edits on page change
     if (increase === 0) {
       setIncrease(maxRecords - 1);
     } else {
@@ -127,9 +127,9 @@ const Edit = () => {
     return { total: "--" };
   };
 
-  // --- FIXED DATA SOURCE CREATOR ---
+  // --- SAFE VALUE RETRIEVAL ---
   const createDataSource = (dayKey, fieldKey) => {
-    // Check if user is typing locally in state first
+    // If local unsaved state exists, prioritize it
     if (teacherData[dayKey]?.[fieldKey] !== undefined) {
       return teacherData[dayKey][fieldKey];
     }
@@ -196,7 +196,7 @@ const Edit = () => {
     };
   };
 
-  // --- POST HANDLER ---
+  // --- SUBMIT HANDLER ---
   const submitToBackend = async (section) => {
     setStatus(prev => ({ ...prev, [section]: 'loading' }));
     
@@ -209,7 +209,7 @@ const Edit = () => {
         hifzError: createDataSource(day, 'hifzError'),
         toV: createDataSource(day, 'toV'),
         fromV: createDataSource(day, 'fromV'),
-        chapter: createDataSource(day, 'chapter'),
+        chapter: createDataSource(day, 'chapter')
       };
 
       const mgmt = managementFunc();
@@ -320,13 +320,31 @@ const Edit = () => {
 
       {/* --- TEACHER SECTION --- */}
       <section className="mb-10 border-b-2 border-gray-300 pb-8">
-        <h1 className="text-2xl font-bold text-center text-blue-900 mb-4 tracking-tighter">TEACHER'S WEEKLY REPORT ({activeYear} - {activeTerm.toUpperCase()})</h1>
+        <h1 className="text-2xl font-bold text-center text-blue-900 mb-4 tracking-tighter">
+          TEACHER'S WEEKLY REPORT ({activeYear} - {activeTerm.toUpperCase()})
+        </h1>
         
         <div className="flex justify-between mb-4 font-bold text-[12px]">
-          <div>Week <input className={underlineInput} value={teacherComments.week || currentTermData?.weeks?.[increase]?.weeks || ''} onChange={e => setTeacherComments({...teacherComments, week: e.target.value})} /> الأسبوع</div>
-          <div style={{ paddingRight:"50px"}} className="cursor-pointer" onClick={()=>back()}><FaArrowAltCircleLeft/></div>
-          <div style={{ paddingRight:"50px"}} className="cursor-pointer" onClick={()=>move()}><FaArrowAltCircleRight/></div>
-          <div>Term <input className={underlineInput} value={teacherComments.term || currentTermData?.terms?.[increase]?.terms || ''} onChange={e => setTeacherComments({...teacherComments, term: e.target.value})} /> الفترة</div>
+          <div>
+            Week{' '}
+            <input 
+              className={underlineInput} 
+              value={teacherComments.week || currentTermData?.weeks?.[increase]?.weeks || ''} 
+              onChange={e => setTeacherComments({...teacherComments, week: e.target.value})} 
+            />{' '}
+            الأسبوع
+          </div>
+          <div style={{ paddingRight:"50px"}} className="cursor-pointer" onClick={() => back()}><FaArrowAltCircleLeft size={18}/></div>
+          <div style={{ paddingRight:"50px"}} className="cursor-pointer" onClick={() => move()}><FaArrowAltCircleRight size={18}/></div>
+          <div>
+            Term{' '}
+            <input 
+              className={underlineInput} 
+              value={teacherComments.term || currentTermData?.terms?.[increase]?.terms || ''} 
+              onChange={e => setTeacherComments({...teacherComments, term: e.target.value})} 
+            />{' '}
+            الفترة
+          </div>
         </div>
 
         <table className="w-full border-collapse border border-black mb-4">
@@ -387,9 +405,33 @@ const Edit = () => {
         </table>
 
         <div className="grid grid-cols-2 gap-y-4 mb-4">
-          <div className="col-span-2">Teacher's Comments: <input className="w-3/4 border-b border-black outline-none" value={teacherComments.comment || currentTermData?.teacherComment?.[increase]?.teacherComment || ''} onChange={e => setTeacherComments({...teacherComments, comment: e.target.value})} /> ملاحظات المعلم</div>
-          <div>Signature: <input className={underlineInput} value={teacherComments.signature || currentTermData?.teacherSign?.[increase]?.teacherSign || ''} onChange={e => setTeacherComments({...teacherComments, signature: e.target.value})} /> التوقيع</div>
-          <div className="text-right">Teacher's Name: <input className={underlineInput} value={teacherComments.name || currentTermData?.teacherName?.[increase]?.teacherName || ''} onChange={e => setTeacherComments({...teacherComments, name: e.target.value})} /> اسم المعلم</div>
+          <div className="col-span-2">
+            Teacher's Comments:{' '}
+            <input 
+              className="w-3/4 border-b border-black outline-none" 
+              value={teacherComments.comment || currentTermData?.teacherComment?.[increase]?.teacherComment || ''} 
+              onChange={e => setTeacherComments({...teacherComments, comment: e.target.value})} 
+            />{' '}
+            ملاحظات المعلم
+          </div>
+          <div>
+            Signature:{' '}
+            <input 
+              className={underlineInput} 
+              value={teacherComments.signature || currentTermData?.teacherSign?.[increase]?.teacherSign || ''} 
+              onChange={e => setTeacherComments({...teacherComments, signature: e.target.value})} 
+            />{' '}
+            التوقيع
+          </div>
+          <div className="text-right">
+            Teacher's Name:{' '}
+            <input 
+              className={underlineInput} 
+              value={teacherComments.name || currentTermData?.teacherName?.[increase]?.teacherName || ''} 
+              onChange={e => setTeacherComments({...teacherComments, name: e.target.value})} 
+            />{' '}
+            اسم المعلم
+          </div>
         </div>
         <SubmitButton section="teacher" label="Submit Teacher Report" onClick={() => submitToBackend('teacher')} />
       </section>
@@ -423,7 +465,13 @@ const Edit = () => {
         </table>
         
         <div className="mb-4 font-bold">
-          Qur'an HOD's Comment: <input className="w-3/4 border-b border-black outline-none font-normal" value={mgmtData.hodComment || currentTermData?.hodComment?.[increase]?.hodComment || ''} onChange={e => setMgmtData({...mgmtData, hodComment: e.target.value})} /> ملاحظات رئيس القسم
+          Qur'an HOD's Comment:{' '}
+          <input 
+            className="w-3/4 border-b border-black outline-none font-normal" 
+            value={mgmtData.hodComment || currentTermData?.hodComment?.[increase]?.hodComment || ''} 
+            onChange={e => setMgmtData({...mgmtData, hodComment: e.target.value})} 
+          />{' '}
+          ملاحظات رئيس القسم
         </div>
         <SubmitButton section="mgmt" label="Submit Management Report" onClick={() => submitToBackend('mgmt')} />
       </section>
@@ -432,11 +480,32 @@ const Edit = () => {
       <section className="mb-6">
         <h2 className="text-xl font-bold text-center text-blue-900 mb-4 uppercase">Parent/Guardian's Weekly Report</h2>
         <p className="mb-4 leading-relaxed text-[12px] italic text-gray-800">
-          I, <input className={underlineInput} value={parentData.name || currentTermData?.parentName?.[increase]?.parentName || ''} onChange={e => setParentData({...parentData, name: e.target.value})} /> the Parent/Guardian of the above named pupil/ward hereby certified that, I listened, observed and supervised my child's/ward's progress for this week in comparison with the school report and Allah is my witness.
+          I,{' '}
+          <input 
+            className={underlineInput} 
+            value={parentData.name || currentTermData?.parentName?.[increase]?.parentName || ''} 
+            onChange={e => setParentData({...parentData, name: e.target.value})} 
+          />{' '}
+          the Parent/Guardian of the above named pupil/ward hereby certified that, I listened, observed and supervised my child's/ward's progress for this week in comparison with the school report and Allah is my witness.
         </p>
         <div className="space-y-4 mb-4">
-          <div className="font-bold">Parent/Guardian's Comment: <input className="w-2/3 border-b border-black outline-none font-normal" value={parentData.comment || currentTermData?.parentComment?.[increase]?.parentComment || ''} onChange={e => setParentData({...parentData, comment: e.target.value})} /></div>
-          <div className="font-bold">Sign/Date: <input className={underlineInput} type="date" value={parentData.date || currentTermData?.parentDate?.[increase]?.parentDate || ''} onChange={e => setParentData({...parentData, date: e.target.value})} /></div>
+          <div className="font-bold">
+            Parent/Guardian's Comment:{' '}
+            <input 
+              className="w-2/3 border-b border-black outline-none font-normal" 
+              value={parentData.comment || currentTermData?.parentComment?.[increase]?.parentComment || ''} 
+              onChange={e => setParentData({...parentData, comment: e.target.value})} 
+            />
+          </div>
+          <div className="font-bold">
+            Sign/Date:{' '}
+            <input 
+              className={underlineInput} 
+              type="date" 
+              value={parentData.date || currentTermData?.parentDate?.[increase]?.parentDate || ''} 
+              onChange={e => setParentData({...parentData, date: e.target.value})} 
+            />
+          </div>
         </div>
         <SubmitButton section="parent" label="Submit Parent Report" onClick={() => submitToBackend('parent')} />
       </section>
