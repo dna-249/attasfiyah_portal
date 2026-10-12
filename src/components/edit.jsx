@@ -237,18 +237,30 @@ const Edit = () => {
   };
 
   const StatusMessage = ({ type }) => {
-    if (type === 'idle') return null;
-    const config = {
-      loading: { text: 'Saving changes...', color: 'text-blue-600', icon: '🔄' },
-      success: { text: 'Report saved successfully!', color: 'text-green-600', icon: '✅' },
-      error: { text: 'Failed to save. Try again.', color: 'text-red-600', icon: '❌' }
-    };
-    return (
-      <div className={`flex items-center gap-2 font-bold text-[12px] ${config[type].color}`}>
-        <span>{config[type].icon}</span> {config[type].text}
-      </div>
-    );
+  // Hide if status is idle or not provided
+  if (!type || type === 'idle') return null;
+
+  const config = {
+    loading: { text: 'Saving changes...', colorClass: 'text-blue-600', textColor: '#2563eb', icon: '🔄' },
+    success: { text: 'Report saved successfully!', colorClass: 'text-green-600', textColor: '#16a34a', icon: '✅' },
+    error: { text: 'Failed to save. Try again.', colorClass: 'text-red-600', textColor: '#dc2626', icon: '❌' }
   };
+
+  const current = config[type];
+
+  // Fallback to null if an invalid type string is passed
+  if (!current) return null;
+
+  return (
+    <div 
+      className={`flex items-center gap-2 font-bold text-[12px] ${current.colorClass}`}
+      style={{ color: current.textColor }}
+    >
+      <span>{current.icon}</span> 
+      <span>{current.text}</span>
+    </div>
+  );
+};
 
   const SubmitButton = ({ section, onClick, label }) => {
     const isIdle = status[section] === 'idle';
@@ -463,7 +475,7 @@ const Edit = () => {
         </div>
         <SubmitButton section="mgmt" label="Submit Management Report" onClick={() => submitToBackend('mgmt')} />  </section>
 
-      {/* --- PARENT SECTION --- */}
+      {/* --- PARENT SECTION --- */} 
       <section className="mb-6">
         <h2 className="text-xl font-bold text-center text-blue-900 mb-4 uppercase">Parent/Guardian's Weekly Report</h2>
         <p className="mb-4 leading-relaxed text-[12px] italic text-gray-800">
