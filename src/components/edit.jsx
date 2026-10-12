@@ -64,7 +64,7 @@ const Edit = () => {
   const getNestedTermData = () => {
     if (!response) return {};
     
-    const ay0 = response?.academicYears?.[0];
+    const ay0 = response?.academicYears;
     console.log(ay0)
     if (ay0) {
       if (ay0['0']?.[selectedYear]?.[selectedTerm]) {
