@@ -45,7 +45,7 @@ const Edit = () => {
         if (!studentRecord) throw new Error("No data received from API.");
         
         setResponse(studentRecord);
-        console(res.data?.academicYears)
+        console.log(res.data?.academicYears)
 
         
         const currentYearBlock = studentRecord?.academicYears?.[0] || {};

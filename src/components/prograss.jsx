@@ -41,7 +41,7 @@ const WeeklyReport = () => {
     async function fech(params) {
      const res =  await axios.get(
         `https://portal-database-seven.vercel.app/student/${id}`)
-        console(res.data?.academicYears)
+        console.log(res.data?.academicYears)
 
     };fech()
     

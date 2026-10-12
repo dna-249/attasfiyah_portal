@@ -57,7 +57,7 @@ const WeeklyReportView = () => {
         if (!res.data) throw new Error('No data received from API.');
         
         setResponse(res.data);
-        console(res.data?.academicYears)
+        console.log(res.data?.academicYears)
 
         // Pre-select student defaults if present
         if (res.data?.session) setSelectedYear(res.data.session);
