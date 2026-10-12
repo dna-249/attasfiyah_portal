@@ -462,12 +462,12 @@ const Edit = () => {
                   </td>
                   
                 ))}
-                {['remark', 'grade', 'score', 'stopping', 'starting'].map(field => (
+                {/* {['remark', 'grade', 'score', 'stopping', 'starting'].map(field => (
                   <td key={field} className="border border-black">
                     <input className={inputClass} readOnly value={managementFunc()[topic.l][field] || ''} />
                   </td>
                   
-                ))}
+                ))} */}
               </tr>
             ))}
           </tbody>
