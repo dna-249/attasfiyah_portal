@@ -39,7 +39,7 @@ const Edit = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const res = await axios.get(`[https://portal-database-seven.vercel.app/student/$](https://portal-database-seven.vercel.app/student/$){id}`);
+        const res = await axios.get(`https://portal-database-seven.vercel.app/student/${id}`);
         const studentRecord = res.data?.student || res.data?.data || res.data;
         
         if (!studentRecord) throw new Error("No data received from API.");
