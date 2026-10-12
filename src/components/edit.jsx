@@ -51,7 +51,6 @@ const Edit = () => {
         const availableYears = Object.keys(currentYearBlock?.['0'] || currentYearBlock).filter(k => k !== '_id' && /^\d+$/.test(k));
         if (availableYears.length > 0) setSelectedYear(availableYears[availableYears.length - 1]);
         if (studentRecord?.term) setSelectedTerm(studentRecord.term);
-        console.log(availableYears)
 
 
       } catch (err) {
@@ -66,6 +65,7 @@ const Edit = () => {
     if (!response) return {};
     
     const ay0 = response?.academicYears?.[0];
+    console.log(ay0)
     if (ay0) {
       if (ay0['0']?.[selectedYear]?.[selectedTerm]) {
         return ay0['0'][selectedYear][selectedTerm];
