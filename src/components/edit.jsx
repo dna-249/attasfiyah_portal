@@ -45,7 +45,7 @@ const Edit = () => {
         if (!studentRecord) throw new Error("No data received from API.");
         
         setResponse(studentRecord);
-
+             console.log(res?.data)
         
         const currentYearBlock = studentRecord?.academicYears?.[0] || {};
         const availableYears = Object.keys(currentYearBlock?.['0'] || currentYearBlock).filter(k => k !== '_id' && /^\d+$/.test(k));
@@ -223,7 +223,6 @@ const Edit = () => {
           parentComment: parentData.comment || currentTermData?.parentComment?.[increase]?.parentComment || '',
           parentDate: parentData.date || currentTermData?.parentDate?.[increase]?.parentDate || ''
         }
-        console.log(payload)
 
 
 
