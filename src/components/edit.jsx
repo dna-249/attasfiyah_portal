@@ -137,7 +137,7 @@ const Edit = () => {
   };
 
   const managementFunc = () => {
-    const daysList = ['sat', 'sun', 'mon', 'tue', 'wed', 'thur', 'fri'];
+    const daysList = ['sat', 'sun', 'mon', 'tue', 'wed', 'thu', 'fri'];
     const weekLogs = daysList.map(d => currentTermData?.[d]?.[increase]).filter(log => log && typeof log === 'object');
     
     const newHifzLogs = weekLogs.filter(log => log.hifz || log.chapter || log.fromV);
@@ -146,8 +146,8 @@ const Edit = () => {
     if (newHifzLogs.length > 0) {
       const first = newHifzLogs[0];
       const last = newHifzLogs[newHifzLogs.length - 1];
-      newStarting = first.chapter ? `${first.chapter} (v.${first.fromV || '1'})` : (first.fromV || '--');
-      newStopping = last.chapter ? `${last.chapter} (v.${last.toV || 'end'})` : (last.toV || '--');
+      newStarting = first.chapter ? `${first.chapter} (${first.fromV || '1'})` : (first.fromV || '--');
+      newStopping = last.chapter ? `${last.chapter} (${last.toV || 'end'})` : (last.toV || '--');
 
       const totalHifz = newHifzLogs.reduce((acc, log) => {
         const { total } = totalScore(log.hifz, log.hifzError, log.tajweed, log.tajError);
@@ -459,7 +459,6 @@ const Edit = () => {
                 {['remark', 'grade', 'score', 'stopping', 'starting'].map(field => (
                   <td key={field} className="border border-black">
                     <input className={inputClass} readOnly value={managementFunc()[topic.k][field] || ''} />
-                    {console.log(managementFunc())}
                   </td>
                 ))}
                 <td className="border border-black font-bold bg-gray-50 text-[10px]">{topic.l}</td>
