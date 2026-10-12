@@ -224,9 +224,12 @@ const Edit = () => {
           parentDate: parentData.date || currentTermData?.parentDate?.[increase]?.parentDate || ''
         }
         console.log(payload)
+
+
+
       const response = await axios.put(
         `https://portal-database-seven.vercel.app/student/edit/${id}/${day}/${increase}`, 
-       payload
+       {payload}
       );
       
       if (response.status === 200 || response.status === 204) {
