@@ -203,10 +203,7 @@ const Edit = () => {
       };
 
       const mgmt = managementFunc();
-
-      const response = await axios.put(
-        `[https://portal-database-seven.vercel.app/student/edit/$](https://portal-database-seven.vercel.app/student/edit/$){id}/${day}/${increase}`, 
-        {
+      const payload =  {
           year: selectedYear,
           term: selectedTerm,
           ...activeDayData,
@@ -226,6 +223,10 @@ const Edit = () => {
           parentComment: parentData.comment || currentTermData?.parentComment?.[increase]?.parentComment || '',
           parentDate: parentData.date || currentTermData?.parentDate?.[increase]?.parentDate || ''
         }
+        console.log(payload)
+      const response = await axios.put(
+        `https://portal-database-seven.vercel.app/student/edit/${id}/${day}/${increase}`, 
+       payload
       );
       
       if (response.status === 200 || response.status === 204) {
@@ -459,7 +460,6 @@ const Edit = () => {
                 {['remark', 'grade', 'score', 'stopping', 'starting'].map(field => (
                   <td key={field} className="border border-black">
                     <input className={inputClass} readOnly value={managementFunc()[topic.k]?.[field] || ''} />
-                    {console.log(managementFunc()[topic.l]?.[field])}
                   </td>
                    
                 ))}
