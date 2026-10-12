@@ -333,8 +333,8 @@ const Edit = () => {
             />{' '}
             الأسبوع
           </div>
-          <div style={{ paddingRight:"50px"}} className="cursor-pointer" onClick={() => back()}><FaArrowAltCircleLeft size="{18}"/></div>
-          <div style={{ paddingRight:"50px"}} className="cursor-pointer" onClick={() => move()}><FaArrowAltCircleRight size="{18}"/></div>
+          <div style={{ paddingRight:"50px"}} className="cursor-pointer" onClick={() => back()}><FaArrowAltCircleLeft size="{2}"/></div>
+          <div style={{ paddingRight:"50px"}} className="cursor-pointer" onClick={() => move()}><FaArrowAltCircleRight size="{2}"/></div>
           <div>
             Term{' '}
             <input 
