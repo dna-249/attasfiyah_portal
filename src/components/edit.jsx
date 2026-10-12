@@ -458,16 +458,16 @@ const Edit = () => {
               <tr key={topic.k} className="h-12">
                 {['remark', 'grade', 'score', 'stopping', 'starting'].map(field => (
                   <td key={field} className="border border-black">
-                    <input className={inputClass} readOnly value={managementFunc()[topic.k][field] || ''} />
+                    <input className={inputClass} readOnly value={managementFunc()[topic.k]?.[field] || ''} />
                   </td>
                   
                 ))}
-                {/* {['remark', 'grade', 'score', 'stopping', 'starting'].map(field => (
+                {['remark', 'grade', 'score', 'stopping', 'starting'].map(field => (
                   <td key={field} className="border border-black">
-                    <input className={inputClass} readOnly value={managementFunc()[topic.l][field] || ''} />
+                    <input className={inputClass} readOnly value={managementFunc()[topic.l]?.[field] || ''} />
                   </td>
                   
-                ))} */}
+                ))}
               </tr>
             ))}
           </tbody>
