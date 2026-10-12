@@ -45,13 +45,14 @@ const Edit = () => {
         if (!studentRecord) throw new Error("No data received from API.");
         
         setResponse(studentRecord);
-        console.log(res.data?.academicYears)
 
         
         const currentYearBlock = studentRecord?.academicYears?.[0] || {};
         const availableYears = Object.keys(currentYearBlock?.['0'] || currentYearBlock).filter(k => k !== '_id' && /^\d+$/.test(k));
         if (availableYears.length > 0) setSelectedYear(availableYears[availableYears.length - 1]);
         if (studentRecord?.term) setSelectedTerm(studentRecord.term);
+        console.log(availableYears)
+
 
       } catch (err) {
         console.error("Fetch error:", err);
