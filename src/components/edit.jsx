@@ -459,8 +459,9 @@ const Edit = () => {
                 {['remark', 'grade', 'score', 'stopping', 'starting'].map(field => (
                   <td key={field} className="border border-black">
                     <input className={inputClass} readOnly value={managementFunc()[topic.k]?.[field] || ''} />
+                    {console.log(managementFunc()[topic.l]?.[field])}
                   </td>
-                  
+                   
                 ))}
                 
                 <td className="border border-black font-bold bg-gray-50 text-[10px]">{topic.l}</td>
