@@ -333,9 +333,9 @@ const Edit = () => {
             />{' '}
             الأسبوع
           </div>
-          <div style={{ paddingRight:"50px"}} className="cursor-pointer" onClick={() => back()}><FaArrowAltCircleLeft size="{2}"/></div>
-          <div style={{ paddingRight:"50px"}} className="cursor-pointer" onClick={() => move()}><FaArrowAltCircleRight size="{2}"/></div>
-          <div>
+          <div className="cursor-pointer hover:text-blue-600 pr-12" onClick={back}> <FaArrowAltCircleLeft size={18} /> </div>
+          <div className="cursor-pointer hover:text-blue-600 pr-12" onClick={move}>  <FaArrowAltCircleRight size={18} /> </div>
+           <div>
             Term{' '}
             <input 
               className={underlineInput} 
