@@ -461,8 +461,8 @@ const Edit = () => {
                     <input className={inputClass} readOnly value={managementFunc()[topic.k][field] || ''} />
                   </td>
                 ))}
-                <td className="border border-black font-bold bg-gray-50 text-[10px]">{topic.l}</td>
-              </tr>
+             <input className={inputClass} readOnly value={managementFunc()[topic.l][field] || ''} />
+    </tr>
             ))}
           </tbody>
         </table>
