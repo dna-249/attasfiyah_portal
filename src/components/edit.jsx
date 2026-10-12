@@ -64,11 +64,10 @@ const Edit = () => {
   const getNestedTermData = () => {
     if (!response) return {};
     
-    const ay0 = response?.academicYears;
-    console.log(ay0)
+    const ay0 = response?.academicYears?.[0];
     if (ay0) {
-      if (ay0['0']?.[selectedYear]?.[selectedTerm]) {
-        return ay0['0'][selectedYear][selectedTerm];
+      if (ay0?.[selectedYear]?.[selectedTerm]) {
+        return ay0?.[selectedYear]?.[selectedTerm];
       }
       if (ay0[selectedYear]?.[selectedTerm]) {
         return ay0[selectedYear][selectedTerm];
@@ -79,6 +78,7 @@ const Edit = () => {
   };
 
   const currentTermData = getNestedTermData();
+  console.log(currentTermData)
 
   const currentYearBlock = response?.academicYears?.[0] || {};
   const yearContainer = currentYearBlock?.['0'] || currentYearBlock;
