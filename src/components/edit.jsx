@@ -45,6 +45,8 @@ const Edit = () => {
         if (!studentRecord) throw new Error("No data received from API.");
         
         setResponse(studentRecord);
+        console(res.data?.academicYears)
+
         
         const currentYearBlock = studentRecord?.academicYears?.[0] || {};
         const availableYears = Object.keys(currentYearBlock?.['0'] || currentYearBlock).filter(k => k !== '_id' && /^\d+$/.test(k));

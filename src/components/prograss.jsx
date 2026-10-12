@@ -39,8 +39,10 @@ const WeeklyReport = () => {
   const [status, setStatus] = useState({ teacher: 'idle', mgmt: 'idle', parent: 'idle' });
   useEffect(()=>{
     async function fech(params) {
-      await axios.get(
+     const res =  await axios.get(
         `https://portal-database-seven.vercel.app/student/${id}`)
+        console(res.data?.academicYears)
+
     };fech()
     
   },[id])
