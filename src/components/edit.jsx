@@ -200,7 +200,7 @@ const Edit = () => {
       const mgmt = managementFunc();
 
       const response = await axios.put(
-        `http://localhost:3000/student/edit/${id}/${day}/${increase}`, 
+        `https://portal-database-seven.vercel.app/student/edit/${id}/${day}/${increase}`, 
         {
           year: activeYear,
           term: activeTerm,
