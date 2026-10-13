@@ -203,8 +203,10 @@ const Edit = () => {
       };
 
       const mgmt = managementFunc();
-      const payload =  {
-          year: selectedYear,
+         
+      const response = await axios.put(
+        `https://portal-database-seven.vercel.app/student/edit/${id}/${day}/${increase}`, 
+       { year: selectedYear,
           term: selectedTerm,
           ...activeDayData,
           weeks: teacherComments?.week || currentTermData?.weeks?.[increase]?.weeks || '',
@@ -223,12 +225,6 @@ const Edit = () => {
           parentComment: parentData.comment || currentTermData?.parentComment?.[increase]?.parentComment || '',
           parentDate: parentData.date || currentTermData?.parentDate?.[increase]?.parentDate || ''
         }
-
-
-
-      const response = await axios.put(
-        `https://portal-database-seven.vercel.app/student/edit/${id}/${day}/${increase}`, 
-       {payload}
       );
       
       if (response.status === 200 || response.status === 204) {
