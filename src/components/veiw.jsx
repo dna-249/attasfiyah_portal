@@ -313,7 +313,7 @@ const WeeklyReportView = () => {
           <div className="cursor-pointer hover:text-blue-600 pr-12" onClick={back}>
             <FaArrowAltCircleLeft size={18} />
           </div>
-             <div  style={{ paddingRight:"-30px"}}>{increase}</div>
+             <div  style={{ paddingLeft:"-20px"}}>{increase}</div>
 
           <div className="cursor-pointer hover:text-blue-600 pr-12" onClick={move}>
             <FaArrowAltCircleRight size={18} />
