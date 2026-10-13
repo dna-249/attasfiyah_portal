@@ -5,7 +5,8 @@ import { useParams } from 'react-router-dom';
 
 const Edit = () => {
   const days = ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-  const func = (id) =>  id.slice(0, 3).toLocaleLowerCase();
+  const func = (id) => (id === 'Thursday' ? id.slice(0, 4).toLocaleLowerCase() : id.slice(0, 3).toLocaleLowerCase());
+  const lower = days.map((items) => func(items));
 
   const [response, setResponse] = useState(null);
   const [day, setDay] = useState('sat');
@@ -18,10 +19,22 @@ const Edit = () => {
   const [selectedYear, setSelectedYear] = useState('2026');
   const [selectedTerm, setSelectedTerm] = useState('thirdTerm');
 
-  // --- FORM OVERRIDE STATES ---
-  const [teacherData, setTeacherData] = useState({});
+  // --- STATES ---
+  const [teacherData, setTeacherData] = useState(
+    days.map(dayName => ({ 
+      day: func(dayName), date: '', remark: '', total: '', tajweed: '', 
+      hifz: '', tajError: '', hifzError: '', toV: '', fromV: '', chapter: '' 
+    }))
+  );
+  
   const [teacherComments, setTeacherComments] = useState({ week: '', term: '', comment: '', name: '', signature: '' });
-  const [mgmtData, setMgmtData] = useState({ hodComment: '' });
+  
+  const [mgmtData, setMgmtData] = useState({
+    newHifz: { starting: '', stopping: '', score: '', grade: '', remark: '' },
+    prevHifz: { starting: '', stopping: '', score: '', grade: '', remark: '' },
+    hodComment: ''
+  });
+
   const [parentData, setParentData] = useState({ name: '', comment: '', date: '' });
   const [status, setStatus] = useState({ teacher: 'idle', mgmt: 'idle', parent: 'idle' });
 
@@ -35,23 +48,20 @@ const Edit = () => {
     return { Grade: "--", Remark: "--" };
   };
 
-  // --- FETCH DATA ---
+  // --- FETCH DATA CORRECTLY ---
   useEffect(() => {
     const fetchData = async () => {
       try {
         const res = await axios.get(`https://portal-database-seven.vercel.app/student/${id}`);
-        const studentRecord = res.data?.student || res.data?.data || res.data;
+        if (!res.data) throw new Error("No data received from API.");
         
-        if (!studentRecord) throw new Error("No data received from API.");
+        setResponse(res.data);
         
-        setResponse(studentRecord);
-             console.log(res?.data)
-        
-        const currentYearBlock = studentRecord?.academicYears?.[0] || {};
-        const availableYears = Object.keys(currentYearBlock?.['0'] || currentYearBlock).filter(k => k !== '_id' && /^\d+$/.test(k));
+        // Initialize default year/term from response
+        const currentYearBlock = res.data?.academicYears?.[0] || {};
+        const availableYears = Object.keys(currentYearBlock).filter(k => k !== '_id' && /^\d+$/.test(k));
         if (availableYears.length > 0) setSelectedYear(availableYears[availableYears.length - 1]);
-        if (studentRecord?.term) setSelectedTerm(studentRecord.term);
-
+        if (res.data?.term) setSelectedTerm(res.data.term);
 
       } catch (err) {
         console.error("Fetch error:", err);
@@ -60,39 +70,31 @@ const Edit = () => {
     if (id) fetchData();
   }, [id]);
 
-  // Extract nested term data matching `academicYears[0]['0'][activeYear][activeTerm]`
+  // --- NESTED TERM DATA EXTRACTOR ---
+  const currentYearBlock = response?.academicYears?.[0] || {};
+  const availableYears = Object.keys(currentYearBlock).filter(k => k !== '_id' && /^\d+$/.test(k));
+  
+  const activeYear = selectedYear || response?.session || availableYears[0] || '2026';
+  const activeTerm = selectedTerm || response?.term || 'thirdTerm';
+
   const getNestedTermData = () => {
-    if (!response) return {};
-    
-    const ay0 = response?.academicYears?.[0];
-    if (ay0) {
-      if (ay0?.[selectedYear]?.[selectedTerm]) {
-        return ay0?.[selectedYear]?.[selectedTerm];
-      }
-      if (ay0[selectedYear]?.[selectedTerm]) {
-        return ay0[selectedYear][selectedTerm];
-      }
-    }
-    
-    return response?.[selectedYear]?.[selectedTerm] || {};
+    if (!response?.academicYears) return {};
+    const ay = response.academicYears[0];
+    if (!ay) return {};
+    const yearContainer = ay['0'] || ay;
+    const termContainer = yearContainer?.[activeYear] || ay?.[activeYear];
+    return termContainer?.[activeTerm] || {};
   };
 
   const currentTermData = getNestedTermData();
-  console.log(currentTermData)
-
-  const currentYearBlock = response?.academicYears?.[0] || {};
-  const yearContainer = currentYearBlock?.['0'] || currentYearBlock;
-  const availableYears = Object.keys(yearContainer).filter(k => k !== '_id' && /^\d+$/.test(k));
 
   const maxRecords = Math.max(
     currentTermData?.sat?.length || 0,
     currentTermData?.sun?.length || 0,
-    currentTermData?.mon?.length || 0,
     1
   );
 
   const move = () => {
-    setTeacherData({}); 
     if (increase >= maxRecords - 1) {
       setIncrease(0);
     } else {
@@ -101,7 +103,6 @@ const Edit = () => {
   };
 
   const back = () => {
-    setTeacherData({}); 
     if (increase === 0) {
       setIncrease(maxRecords - 1);
     } else {
@@ -119,25 +120,29 @@ const Edit = () => {
     return { total: "--" };
   };
 
-  const createDataSource = (dayKey, fieldKey) => {
-    if (teacherData[dayKey]?.[fieldKey] !== undefined) {
-      return teacherData[dayKey][fieldKey];
-    }
-
-    const dayArray = currentTermData?.[dayKey] || [];
+  const createDataSource = (daily, k) => {
+    const dayArray = currentTermData?.[daily] || [];
     const record = dayArray[increase] || {};
 
     const { total } = totalScore(record.hifz, record.hifzError, record.tajweed, record.tajError);
-    const { Remark } = getGradeAndRemark(total);
-
-    if (fieldKey === 'total') return total;
-    if (fieldKey === 'remark') return Remark;
-
-    return record[fieldKey] !== undefined ? record[fieldKey] : '';
+    const { Remark } = getGradeAndRemark(total);  
+               
+    return {
+      date: record.date || '',
+      remark: Remark,
+      total: total,
+      tajweed: record.tajweed || '', 
+      hifz: record.hifz || '',
+      tajError: record.tajError || '', 
+      hifzError: record.hifzError || '',
+      toV: record.toV || '',
+      fromV: record.fromV || '',
+      chapter: record.chapter || ''
+    };
   };
 
   const managementFunc = () => {
-    const daysList = ['sat', 'sun', 'mon', 'tue', 'wed', 'thu', 'fri'];
+    const daysList = ['sat', 'sun', 'mon', 'tue', 'wed', 'thur', 'fri'];
     const weekLogs = daysList.map(d => currentTermData?.[d]?.[increase]).filter(log => log && typeof log === 'object');
     
     const newHifzLogs = weekLogs.filter(log => log.hifz || log.chapter || log.fromV);
@@ -146,8 +151,8 @@ const Edit = () => {
     if (newHifzLogs.length > 0) {
       const first = newHifzLogs[0];
       const last = newHifzLogs[newHifzLogs.length - 1];
-      newStarting = first.chapter ? `${first.chapter} (${first.fromV || '1'})` : (first.fromV || '--');
-      newStopping = last.chapter ? `${last.chapter} (${last.toV || 'end'})` : (last.toV || '--');
+      newStarting = first.chapter ? `${first.chapter} (v.${first.fromV || '1'})` : (first.fromV || '--');
+      newStopping = last.chapter ? `${last.chapter} (v.${last.toV || 'end'})` : (last.toV || '--');
 
       const totalHifz = newHifzLogs.reduce((acc, log) => {
         const { total } = totalScore(log.hifz, log.hifzError, log.tajweed, log.tajError);
@@ -186,41 +191,39 @@ const Edit = () => {
     };
   };
 
-  // --- SUBMIT HANDLER ---
+  // --- POST HANDLER ---
   const submitToBackend = async (section) => {
     setStatus(prev => ({ ...prev, [section]: 'loading' }));
     
     try {
-      const activeDayData = {
-        date: createDataSource(day, 'date'),
-        tajweed: createDataSource(day, 'tajweed'),
-        hifz: createDataSource(day, 'hifz'),
-        tajError: createDataSource(day, 'tajError'),
-        hifzError: createDataSource(day, 'hifzError'),
-        toV: createDataSource(day, 'toV'),
-        fromV: createDataSource(day, 'fromV'),
-        chapter: createDataSource(day, 'chapter')
-      };
-
+      const activeDayData = createDataSource(day);
       const mgmt = managementFunc();
-         
+
       const response = await axios.put(
         `https://portal-database-seven.vercel.app/student/edit/${id}/${day}/${increase}`, 
-       { year: selectedYear,
-          term: selectedTerm,
-          ...activeDayData,
+        {
+          year: activeYear,
+          term: activeTerm,
+          date: teacherData[ids]?.date || activeDayData.date,
+          tajweed: teacherData[ids]?.tajweed || activeDayData.tajweed,
+          hifz: teacherData[ids]?.hifz || activeDayData.hifz,
+          tajError: teacherData[ids]?.tajError || activeDayData.tajError,
+          hifzError: teacherData[ids]?.hifzError || activeDayData.hifzError,
+          toV: teacherData[ids]?.toV || activeDayData.toV,
+          fromV: teacherData[ids]?.fromV || activeDayData.fromV,
+          chapter: teacherData[ids]?.chapter || activeDayData.chapter,
           weeks: teacherComments?.week || currentTermData?.weeks?.[increase]?.weeks || '',
           terms: teacherComments?.term || currentTermData?.terms?.[increase]?.terms || '', 
           teacherComment: teacherComments.comment || currentTermData?.teacherComment?.[increase]?.teacherComment || '',
           teacherName: teacherComments.name || currentTermData?.teacherName?.[increase]?.teacherName || '', 
           teacherSign: teacherComments.signature || currentTermData?.teacherSign?.[increase]?.teacherSign || '', 
-          newStarting: mgmt.newHifz.starting,
-          newStopping: mgmt.newHifz.stopping,
-          newScore: mgmt.newHifz.score,
+          newStarting: mgmtData.newHifz.starting || mgmt.newHifz.starting,
+          newStopping: mgmtData.newHifz.stopping || mgmt.newHifz.stopping,
+          newScore: mgmtData.newHifz.score || mgmt.newHifz.score,
           hodComment: mgmtData.hodComment || mgmt.hodComment,
-          prevStarting: mgmt.prevHifz.starting,
-          preStopping: mgmt.prevHifz.stopping, 
-          preScore: mgmt.prevHifz.score,
+          prevStarting: mgmtData.prevHifz.starting || mgmt.prevHifz.starting,
+          preStopping: mgmtData.prevHifz.stopping || mgmt.prevHifz.stopping, 
+          preScore: mgmtData.prevHifz.score || mgmt.prevHifz.score,
           parentName: parentData.name || currentTermData?.parentName?.[increase]?.parentName || '',
           parentComment: parentData.comment || currentTermData?.parentComment?.[increase]?.parentComment || '',
           parentDate: parentData.date || currentTermData?.parentDate?.[increase]?.parentDate || ''
@@ -239,30 +242,18 @@ const Edit = () => {
   };
 
   const StatusMessage = ({ type }) => {
-  // Hide if status is idle or not provided
-  if (!type || type === 'idle') return null;
-
-  const config = {
-    loading: { text: 'Saving changes...', colorClass: 'text-blue-600', textColor: '#2563eb', icon: '🔄' },
-    success: { text: 'Report saved successfully!', colorClass: 'text-green-600', textColor: '#16a34a', icon: '✅' },
-    error: { text: 'Failed to save. Try again.', colorClass: 'text-red-600', textColor: '#dc2626', icon: '❌' }
+    if (type === 'idle') return null;
+    const config = {
+      loading: { text: 'Saving changes...', color: 'text-blue-600', icon: '🔄' },
+      success: { text: 'Report saved successfully!', color: 'text-green-600', icon: '✅' },
+      error: { text: 'Failed to save. Try again.', color: 'text-red-600', icon: '❌' }
+    };
+    return (
+      <div className={`flex items-center gap-2 font-bold text-[12px] ${config[type].color}`}>
+        <span>{config[type].icon}</span> {config[type].text}
+      </div>
+    );
   };
-
-  const current = config[type];
-
-  // Fallback to null if an invalid type string is passed
-  if (!current) return null;
-
-  return (
-    <div 
-      className={`flex items-center gap-2 font-bold text-[12px] ${current.colorClass}`}
-      style={{ color: current.textColor }}
-    >
-      <span>{current.icon}</span> 
-      <span>{current.text}</span>
-    </div>
-  );
-};
 
   const SubmitButton = ({ section, onClick, label }) => {
     const isIdle = status[section] === 'idle';
@@ -277,7 +268,7 @@ const Edit = () => {
         >
           {status[section] === 'loading' ? 'Processing...' : label}
         </button>
-        <StatusMessage type="{status[section]}"/>
+        <StatusMessage type={status[section]} />
       </div>
     );
   };
@@ -293,8 +284,8 @@ const Edit = () => {
         <div className="flex items-center gap-2 font-bold">
           <label>Academic Year:</label>
           <select 
-            value={selectedYear} 
-            onChange={(e) => { setSelectedYear(e.target.value); setIncrease(0); setTeacherData({}); }}
+            value={activeYear} 
+            onChange={(e) => { setSelectedYear(e.target.value); setIncrease(0); }}
             className="border border-gray-400 px-2 py-1 rounded bg-white outline-none cursor-pointer"
           >
             {availableYears.length > 0 ? (
@@ -308,8 +299,8 @@ const Edit = () => {
         <div className="flex items-center gap-2 font-bold">
           <label>Academic Term:</label>
           <select 
-            value={selectedTerm} 
-            onChange={(e) => { setSelectedTerm(e.target.value); setIncrease(0); setTeacherData({}); }}
+            value={activeTerm} 
+            onChange={(e) => { setSelectedTerm(e.target.value); setIncrease(0); }}
             className="border border-gray-400 px-2 py-1 rounded bg-white outline-none cursor-pointer"
           >
             <option value="firstTerm">First Term</option>
@@ -321,31 +312,13 @@ const Edit = () => {
 
       {/* --- TEACHER SECTION --- */}
       <section className="mb-10 border-b-2 border-gray-300 pb-8">
-        <h1 className="text-2xl font-bold text-center text-blue-900 mb-4 tracking-tighter">
-          TEACHER'S WEEKLY REPORT ({selectedYear} - {selectedTerm.toUpperCase()})
-        </h1>
+        <h1 className="text-2xl font-bold text-center text-blue-900 mb-4 tracking-tighter">TEACHER'S WEEKLY REPORT ({activeYear} - {activeTerm.toUpperCase()})</h1>
         
         <div className="flex justify-between mb-4 font-bold text-[12px]">
-          <div>
-            Week{' '}
-            <input 
-              className={underlineInput} 
-              value={teacherComments.week || currentTermData?.weeks?.[increase]?.weeks || ''} 
-              onChange={e => setTeacherComments({...teacherComments, week: e.target.value})} 
-            />{' '}
-            الأسبوع
-          </div>
-          <div className="cursor-pointer hover:text-blue-600 pr-12" onClick={back}> <FaArrowAltCircleLeft size={18} /> </div>
-          <div className="cursor-pointer hover:text-blue-600 pr-12" onClick={move}>  <FaArrowAltCircleRight size={18} /> </div>
-           <div>
-            Term{' '}
-            <input 
-              className={underlineInput} 
-              value={teacherComments.term || currentTermData?.terms?.[increase]?.terms || ''} 
-              onChange={e => setTeacherComments({...teacherComments, term: e.target.value})} 
-            />{' '}
-            الفترة
-          </div>
+          <div>Week <input className={underlineInput} value={teacherComments.week || currentTermData?.weeks?.[increase]?.weeks || ''} onChange={e => setTeacherComments({...teacherComments, week: e.target.value})} /> الأسبوع</div>
+          <div style={{ paddingRight:"50px"}} className="cursor-pointer" onClick={()=>back()}><FaArrowAltCircleLeft/></div>
+          <div style={{ paddingRight:"50px"}} className="cursor-pointer" onClick={()=>move()}><FaArrowAltCircleRight/></div>
+          <div>Term <input className={underlineInput} value={teacherComments.term || currentTermData?.terms?.[increase]?.terms || ''} onChange={e => setTeacherComments({...teacherComments, term: e.target.value})} /> الفترة</div>
         </div>
 
         <table className="w-full border-collapse border border-black mb-4">
@@ -365,39 +338,32 @@ const Edit = () => {
             </tr>
           </thead>
           <tbody>
-            {days.map((dayName, idx) => {
-              const dayKey = func(dayName);
+            {teacherData.map((row, idx) => {
+              const dataSource = createDataSource(row.day, idx);
               return (
-                <tr key={dayKey} className="h-8">
-                  {['date', 'remark', 'total', 'tajweed', 'hifz', 'tajError', 'hifzError', 'toV', 'fromV', 'chapter'].map((fieldKey) => (
-                    <td key={fieldKey} className="border border-black">
+                <tr key={idx} className="h-8">
+                  {['date', 'remark', 'total', 'tajweed', 'hifz', 'tajError', 'hifzError', 'toV', 'fromV', 'chapter'].map((field) => (
+                    <td key={field} className="border border-black">
                       <input 
-                        type={fieldKey === "date" ? "date" : "text"} 
+                        type={field === "date" ? "date" : "text"} 
                         className={inputClass} 
-                        value={createDataSource(dayKey, fieldKey)}
-                        readOnly={fieldKey === 'remark' || fieldKey === 'total'}
+                        value={row[field] || dataSource[field] || ''}
                         onChange={(e) => {
-                          const val = e.target.value;
-                          setTeacherData(prev => ({
-                            ...prev,
-                            [dayKey]: {
-                              ...prev[dayKey],
-                              [fieldKey]: val
-                            }
-                          }));
-                          setDay(dayKey);
+                          const updated = [...teacherData];
+                          updated[idx][field] = e.target.value;
+                          setTeacherData(updated);
                           setIds(idx);
                         }} 
                       />
                     </td>
                   ))}
                   <td 
-                    onClick={() => setDay(dayKey)} 
+                    onClick={() => setDay(row.day)} 
                     className={`border border-black font-bold text-center cursor-pointer transition-all ${
-                      day === dayKey ? "bg-blue-600 text-white" : "bg-gray-50 text-black hover:bg-gray-200"
+                      day === row.day ? "bg-blue-600 text-white" : "bg-gray-50 text-black hover:bg-gray-200"
                     }`}
                   >
-                    {dayKey.toUpperCase()}
+                    {row.day.toUpperCase()}
                   </td>
                 </tr>
               );
@@ -406,37 +372,12 @@ const Edit = () => {
         </table>
 
         <div className="grid grid-cols-2 gap-y-4 mb-4">
-          <div className="col-span-2">
-            Teacher's Comments:{' '}
-            <input 
-              className="w-3/4 border-b border-black outline-none" 
-              value={teacherComments.comment || currentTermData?.teacherComment?.[increase]?.teacherComment || ''} 
-              onChange={e => setTeacherComments({...teacherComments, comment: e.target.value})} 
-            />{' '}
-            ملاحظات المعلم
-          </div>
-          <div>
-            Signature:{' '}
-            <input 
-              className={underlineInput} 
-              value={teacherComments.signature || currentTermData?.teacherSign?.[increase]?.teacherSign || ''} 
-              onChange={e => setTeacherComments({...teacherComments, signature: e.target.value})} 
-            />{' '}
-            التوقيع
-          </div>
-          <div className="text-right">
-            Teacher's Name:{' '}
-            <input 
-              className={underlineInput} 
-              value={teacherComments.name || currentTermData?.teacherName?.[increase]?.teacherName || ''} 
-              onChange={e => setTeacherComments({...teacherComments, name: e.target.value})} 
-            />{' '}
-            اسم المعلم
-          </div>
+          <div className="col-span-2">Teacher's Comments: <input className="w-3/4 border-b border-black outline-none" value={teacherComments.comment || currentTermData?.teacherComment?.[increase]?.teacherComment || ''} onChange={e => setTeacherComments({...teacherComments, comment: e.target.value})} /> ملاحظات المعلم</div>
+          <div>Signature: <input className={underlineInput} value={teacherComments.signature || currentTermData?.teacherSign?.[increase]?.teacherSign || ''} onChange={e => setTeacherComments({...teacherComments, signature: e.target.value})} /> التوقيع</div>
+          <div className="text-right">Teacher's Name: <input className={underlineInput} value={teacherComments.name || currentTermData?.teacherName?.[increase]?.teacherName || ''} onChange={e => setTeacherComments({...teacherComments, name: e.target.value})} /> اسم المعلم</div>
         </div>
-         <SubmitButton section="teacher" label="Submit Teacher Report" onClick={() => submitToBackend('teacher')} />
+        <SubmitButton section="teacher" label="Submit Teacher Report" onClick={() => submitToBackend('teacher')} />
       </section>
-
 
       {/* --- MANAGEMENT SECTION --- */}
       <section className="mb-10 border-b-2 border-gray-300 pb-8">
@@ -457,11 +398,9 @@ const Edit = () => {
               <tr key={topic.k} className="h-12">
                 {['remark', 'grade', 'score', 'stopping', 'starting'].map(field => (
                   <td key={field} className="border border-black">
-                    <input className={inputClass} readOnly value={managementFunc()[topic.k]?.[field] || ''} />
+                    <input className={inputClass} readOnly value={managementFunc()[topic.k][field] || ''} />
                   </td>
-                   
                 ))}
-                
                 <td className="border border-black font-bold bg-gray-50 text-[10px]">{topic.l}</td>
               </tr>
             ))}
@@ -469,49 +408,22 @@ const Edit = () => {
         </table>
         
         <div className="mb-4 font-bold">
-          Qur'an HOD's Comment:{' '}
-          <input 
-            className="w-3/4 border-b border-black outline-none font-normal" 
-            value={mgmtData.hodComment || currentTermData?.hodComment?.[increase]?.hodComment || ''} 
-            onChange={e => setMgmtData({...mgmtData, hodComment: e.target.value})} 
-          />{' '}
-          ملاحظات رئيس القسم
+          Qur'an HOD's Comment: <input className="w-3/4 border-b border-black outline-none font-normal" value={mgmtData.hodComment || currentTermData?.hodComment?.[increase]?.hodComment || ''} onChange={e => setMgmtData({...mgmtData, hodComment: e.target.value})} /> ملاحظات رئيس القسم
         </div>
-        <SubmitButton section="mgmt" label="Submit Management Report" onClick={() => submitToBackend('mgmt')} />  </section>
+        <SubmitButton section="mgmt" label="Submit Management Report" onClick={() => submitToBackend('mgmt')} />
+      </section>
 
-      {/* --- PARENT SECTION --- */} 
+      {/* --- PARENT SECTION --- */}
       <section className="mb-6">
         <h2 className="text-xl font-bold text-center text-blue-900 mb-4 uppercase">Parent/Guardian's Weekly Report</h2>
         <p className="mb-4 leading-relaxed text-[12px] italic text-gray-800">
-          I,{' '}
-          <input 
-            className={underlineInput} 
-            value={parentData.name || currentTermData?.parentName?.[increase]?.parentName || ''} 
-            onChange={e => setParentData({...parentData, name: e.target.value})} 
-          />{' '}
-          the Parent/Guardian of the above named pupil/ward hereby certified that, I listened, observed and supervised my child's/ward's progress for this week in comparison with the school report and Allah is my witness.
+          I, <input className={underlineInput} value={parentData.name || currentTermData?.parentName?.[increase]?.parentName || ''} onChange={e => setParentData({...parentData, name: e.target.value})} /> the Parent/Guardian of the above named pupil/ward hereby certified that, I listened, observed and supervised my child's/ward's progress for this week in comparison with the school report and Allah is my witness.
         </p>
         <div className="space-y-4 mb-4">
-          <div className="font-bold">
-            Parent/Guardian's Comment:{' '}
-            <input 
-              className="w-2/3 border-b border-black outline-none font-normal" 
-              value={parentData.comment || currentTermData?.parentComment?.[increase]?.parentComment || ''} 
-              onChange={e => setParentData({...parentData, comment: e.target.value})} 
-            />
-          </div>
-          <div className="font-bold">
-            Sign/Date:{' '}
-            <input 
-              className={underlineInput} 
-              type="date" 
-              value={parentData.date || currentTermData?.parentDate?.[increase]?.parentDate || ''} 
-              onChange={e => setParentData({...parentData, date: e.target.value})} 
-            />
-          </div>
+          <div className="font-bold">Parent/Guardian's Comment: <input className="w-2/3 border-b border-black outline-none font-normal" value={parentData.comment || currentTermData?.parentComment?.[increase]?.parentComment || ''} onChange={e => setParentData({...parentData, comment: e.target.value})} /></div>
+          <div className="font-bold">Sign/Date: <input className={underlineInput} type="date" value={parentData.date || currentTermData?.parentDate?.[increase]?.parentDate || ''} onChange={e => setParentData({...parentData, date: e.target.value})} /></div>
         </div>
-              
-      <SubmitButton section="parent" label="Submit Parent Report" onClick={() => submitToBackend('parent')} />
+        <SubmitButton section="parent" label="Submit Parent Report" onClick={() => submitToBackend('parent')} />
       </section>
 
       {/* --- GRADING KEY --- */}
