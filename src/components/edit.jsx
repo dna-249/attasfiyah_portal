@@ -317,7 +317,6 @@ const Edit = () => {
         <div className="flex justify-between mb-4 font-bold text-[12px]">
           <div>Week <input className={underlineInput} value={teacherComments.week || currentTermData?.weeks?.[increase]?.weeks || ''} onChange={e => setTeacherComments({...teacherComments, week: e.target.value})} /> الأسبوع</div>
           <div style={{ paddingRight:"50px"}} className="cursor-pointer" onClick={()=>back()}><FaArrowAltCircleLeft/></div>
-            <div>{increase}</div>
           <div style={{ paddingRight:"50px"}} className="cursor-pointer" onClick={()=>move()}><FaArrowAltCircleRight/></div>
           <div>Term <input className={underlineInput} value={teacherComments.term || currentTermData?.terms?.[increase]?.terms || ''} onChange={e => setTeacherComments({...teacherComments, term: e.target.value})} /> الفترة</div>
         </div>
