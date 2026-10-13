@@ -177,14 +177,14 @@ const Edit = () => {
       newHifz: { 
         starting: newStarting, 
         stopping: newStopping, 
-        score: newHifzLogs.length > 0 ? newScoreVal : 0, 
+        score: newHifzLogs.length > 0 ? newScoreVal : '--', 
         grade: nScore.Grade, 
         remark: nScore.Remark 
       },
       prevHifz: { 
-        starting: preStarting || 0, 
-        stopping: preStopping || 0, 
-        score: preScoreVal || 0, 
+        starting: preStarting || '--', 
+        stopping: preStopping || '--', 
+        score: preScoreVal || '--', 
         grade: pScore.Grade, 
         remark: pScore.Remark 
       }
