@@ -71,7 +71,7 @@ const Edit = () => {
   }, [id]);
 
   // --- NESTED TERM DATA EXTRACTOR ---
-  const currentYearBlock = response?.academicYears?.[0] || {};
+  const currentYearBlock = response?.academicYears || {};
   const availableYears = Object.keys(currentYearBlock).filter(k => k !== '_id' && /^\d+$/.test(k));
   
   const activeYear = selectedYear || response?.session || availableYears[0] || '2026';
