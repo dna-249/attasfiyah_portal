@@ -79,9 +79,9 @@ const Edit = () => {
 
   const getNestedTermData = () => {
     if (!response?.academicYears) return {};
-    const ay = response.academicYears[0];
+    const ay = response.academicYears?.[0];
     if (!ay) return {};
-    const yearContainer = ay['0'] || ay;
+    const yearContainer = ay;
     const termContainer = yearContainer?.[activeYear] || ay?.[activeYear];
     return termContainer?.[activeTerm] || {};
   };
